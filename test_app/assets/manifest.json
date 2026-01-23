@@ -1,0 +1,15 @@
+{
+  "app": {
+    "type": "lua",
+    "name": "test_app",
+    "title": "Test_app",
+    "version": "0.1.0",
+    "description": "A Turn.io Lua app - update this description",
+    "dependencies": []
+  },
+  "contact_fields": [],
+  "media_assets": [],
+  "journeys": [],
+  "templates": [],
+  "flows": []
+}
