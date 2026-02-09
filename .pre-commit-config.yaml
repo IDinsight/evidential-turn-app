@@ -1,0 +1,9 @@
+repos:
+- repo: local
+  hooks:
+  - id: lua-format
+    name: lua-format
+    entry: lua-format
+    language: system
+    types: [lua]
+    args: [-i]
