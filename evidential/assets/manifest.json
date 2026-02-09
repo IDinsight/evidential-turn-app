@@ -1,10 +1,10 @@
 {
   "app": {
     "type": "lua",
-    "name": "test_app",
-    "title": "Test_app",
+    "name": "evidential",
+    "title": "Evidential",
     "version": "0.1.0",
-    "description": "A Turn.io Lua app - update this description",
+    "description": "Evidential app for testing integration with the Evidential experiments platform",
     "dependencies": [],
     "config": {
       "evidential_api_key": {
