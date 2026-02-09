@@ -17,13 +17,42 @@ function App.on_event(app, number, event, data)
   turn.logger.info("Event received: " .. event)
 
   if event == "install" then
-    -- Subscribe to contact field changes
-    local success, reason = turn.app.set_contact_subscriptions({
-      "name", "surname", "language"
-    })
 
-    if not success then
-      turn.logger.error("Failed to set subscriptions: " .. reason)
+    -- Load manifest and update app config with manifest config
+    local manifest_json = turn.assets.load("manifest.json")
+    local manifest = turn.json.decode(manifest_json)
+    local success_config, _ = turn.app.update_config(manifest.app.config)  -- Store manifest in app config for later use
+    
+    -- Subscribe to contact field changes for experiment_id and assignment_arm_id
+    local contact_subscriptions = turn.app.get_contact_subscriptions()
+    table.insert(contact_subscriptions, "experiment_id")
+    table.insert(contact_subscriptions, "assignment_arm_id")
+    local success_subscriptions, _ = turn.app.set_contact_subscriptions(contact_subscriptions)  -- Subscribe to contact field changes
+
+     -- TESTING TIP: Use turn.test.assert_app_called() in your tests to verify app calls
+     -- Example: turn.test.assert_app_called("test_app", "update_contact_fields", { "experiment_id", "123", "assignment_arm_id", "456" })
+
+     -- TESTING TIP: Use turn.test.assert_http_called() to verify HTTP requests made by the app
+     -- Example: turn.test.assert_http_called({
+     --   method = "POST",
+     --   url = "https://api.evidential.com/v1/assignments",
+     --   body = turn.json.encode({ experiment_id = "123" })
+     -- })
+
+    -- Get journeys and load them
+    -- local journey_files = turn.assets.list("journeys")
+    -- for key, journey_file in ipairs(journey_files) do
+    --   turn.assets.load("journeys/" .. journey_file)
+    --   turn.logger.info("Loaded journey: " .. journey_file)
+    -- end
+
+    if not success_config then
+      turn.logger.error("Failed to update config")
+      return false
+    end
+
+    if not success_subscriptions then
+      turn.logger.error("Failed to set contact subscriptions")
       return false
     end
 
@@ -50,27 +79,16 @@ function App.on_event(app, number, event, data)
     local function_name = data.function_name
     local args = data.args
 
-    if function_name == "hello" then
-      return "continue", { message = "Hello from test_app!" }
+    if function_name == "update_contact_fields" then
+      experiment_id, assignment_arm_id = args[1], args[2]
+      local contact_subscriptions = turn.app.get_contact_subscriptions()
+      contact_subscriptions["experiment_id"] = experiment_id
+      contact_subscriptions["assignment_arm_id"] = assignment_arm_id
+      turn.app.set_contact_subscriptions(contact_subscriptions)
+      return "continue", { message = "Contact fields updated successfully" }
     else
       return "error", "Unknown function: " .. function_name
     end
-
-  elseif event == "http_request" then
-    -- Handle webhook requests
-    if data.method == "GET" and data.path_info[1] == "health" then
-      return true, {
-        status = 200,
-        headers = { ["content-type"] = "application/json" },
-        body = turn.json.encode({ status = "ok" })
-      }
-    end
-
-    return true, {
-      status = 404,
-      headers = { ["content-type"] = "application/json" },
-      body = turn.json.encode({ error = "Not found" })
-    }
 
   elseif event == "get_app_info_markdown" then
     local readme = turn.assets.load("README.md")

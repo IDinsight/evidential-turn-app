@@ -5,9 +5,40 @@
     "title": "Test_app",
     "version": "0.1.0",
     "description": "A Turn.io Lua app - update this description",
-    "dependencies": []
+    "dependencies": [],
+    "config": {
+      "evidential_api_key": {
+        "type": "string",
+        "label": "Evidential API Key",
+        "required": true
+      },
+      "evidential_organization_id": {
+        "type": "string",
+        "label": "Evidential Organization ID",
+        "required": true
+      },
+      "evidential_api_base_url": {
+        "type": "string",
+        "label": "Evidential API Base URL",
+        "required": true,
+        "default": "https://api.evidential.com/v1"
+      }
+    }
   },
-  "contact_fields": [],
+  "contact_fields": [
+    {
+    "type": "STRING",
+    "name": "experiment_id",
+    "display": "Experiment ID",
+    "private": false
+  },
+  {
+    "type": "STRING",
+    "name": "assignment_arm_id",
+    "display": "Assignment Arm ID",
+    "private": false
+  }
+  ],
   "media_assets": [],
   "journeys": [],
   "templates": [],
