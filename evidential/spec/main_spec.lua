@@ -76,11 +76,8 @@ describe("evidential", function()
             }
             local status, result = App.on_event(app_config, number,
                                                 "journey_event", journey_data)
-            -- assert(status == "continue", "Expected status to be 'continue'")
-            -- assert(result.message == "Contact fields updated successfully", "Expected success message")
-            -- local contact_subscriptions = turn.app.get_contact_subscriptions()
-            -- assert(contact_subscriptions["experiment_id"] == "experiment_123", "Expected experiment_id to be updated in contact subscriptions")
-            -- assert(contact_subscriptions["assignment_arm_id"] == "assigned_arm_123", "Expected assignment_arm_id to be updated in contact subscriptions")
+            assert(status == "continue", "Expected journey event to continue")
+            assert(result.assignment ~= nil, "Expected assignment in result")
         end)
     end)
 end)
