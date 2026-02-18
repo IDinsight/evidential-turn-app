@@ -1,16 +1,16 @@
+local turn = require("turn")
 local Functions = {}
 
-function Functions.get_assignment_for_contact(contact_id, app_config)
+function Functions.get_assignment_for_contact(contact_id, experiment_id, app_config)
     local url = string.format("%s/%s/assignments/%s",
-                              app_config.evidential_api_base_url,
-                              app_config.experiment_id, contact_id)
-                            
+                              app_config.evidential_api_base_url.value,
+                              experiment_id, contact_id)
     local body, status_code, headers = turn.http.request({
         url = url,
         method = "GET",
         headers = {
-            ["Authorization"] = "Bearer " .. app_config.evidential_api_key,
-            ["Accept"] = "application/json"
+            Authorization = "Bearer " .. tostring(app_config.evidential_api_key.value),
+            Accept = "application/json"
         }
     })
 

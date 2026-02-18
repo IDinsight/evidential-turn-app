@@ -10,18 +10,20 @@
       "evidential_api_key": {
         "type": "string",
         "label": "Evidential API Key",
-        "required": true
+        "required": true,
+        "value": ""
       },
       "evidential_organization_id": {
         "type": "string",
         "label": "Evidential Organization ID",
-        "required": true
+        "required": true,
+        "value": ""
       },
       "evidential_api_base_url": {
         "type": "string",
         "label": "Evidential API Base URL",
         "required": true,
-        "default": "https://api.evidential.com/v1"
+        "value": "https://api.evidential.com/v1"
       }
     }
   },

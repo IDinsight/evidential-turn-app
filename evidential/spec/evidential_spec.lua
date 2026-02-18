@@ -15,7 +15,7 @@
 local lester = require('lester')
 local turn = require('turn')
 local json = turn.json -- JSON encoding/decoding from turn module
-local App = require('main')
+local App = require('evidential')
 
 local describe, it, before = lester.describe, lester.it, lester.before
 
@@ -29,12 +29,14 @@ describe("evidential", function()
         app_config = {
             uuid = "evidential-app-uuid",
             config = {
-                evidential_api_key = "your-api-key",
-                evidential_organization_id = "your-organization-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
-                experiment_id = "experiment_123"
+                evidential_api_key = {value = "your-api-key"},
+                evidential_organization_id = {value = "your-organization-id"},
+                evidential_api_base_url = {
+                    value = "https://api.evidential.com/v1/experiments"
+                }
             }
         }
+        experiment_id = "experiment_123"
 
         number = {id = "123", msisdn = "+1234567890"}
     end)
@@ -71,7 +73,7 @@ describe("evidential", function()
            function()
             local journey_data = {
                 function_name = "get_assignment_for_contact",
-                args = {number.id},
+                args = {number.id, experiment_id},
                 chat_uuid = "chat-123"
             }
             local status, result = App.on_event(app_config, number,

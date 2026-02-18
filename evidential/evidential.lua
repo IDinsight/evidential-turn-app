@@ -82,10 +82,10 @@ function App.on_event(app, number, event, data)
         local args = data.args
 
         if function_name == "get_assignment_for_contact" then
-            contact_id = args[1]
+            contact_id, experiment_id = args[1], args[2]
             local app_config = app.config
             local response, err = JourneyEvents.get_assignment_for_contact(
-                                      contact_id, app_config)
+                                      contact_id, experiment_id, app_config)
             if response then
                 return "continue", {assignment = response}
             else
