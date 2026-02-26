@@ -9,8 +9,7 @@ function Functions.get_assignment_for_contact(contact_id, experiment_id, app_con
         url = url,
         method = "GET",
         headers = {
-            Authorization = "Bearer " .. tostring(app_config.evidential_api_key.value),
-            Accept = "application/json"
+            ["X-API-Key"] = tostring(app_config.evidential_api_key.value),
         }
     })
 

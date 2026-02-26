@@ -23,7 +23,7 @@
         "type": "string",
         "label": "Evidential API Base URL",
         "required": true,
-        "value": "https://api.evidential.com/v1"
+        "value": "https://api.evidential.dev/v1/experiments/"
       }
     }
   },
