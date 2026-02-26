@@ -18,10 +18,12 @@ function App.on_event(app, number, event, data)
     turn.logger.info("Event received: " .. event)
 
     if event == "install" then
-
         -- Load manifest and update app config with manifest config
         local manifest_json = turn.assets.load("manifest.json")
         local manifest = turn.json.decode(manifest_json)
+        turn.logger.info("Installing from the manifest file")
+        turn.manifest.install(manifest)
+
         local success_config, _ = turn.app.update_config(manifest.app.config) -- Store manifest in app config for later use
 
         -- Subscribe to contact field changes for experiment_id and assignment_arm_id
@@ -60,23 +62,19 @@ function App.on_event(app, number, event, data)
 
         turn.logger.info("App installed successfully!")
         return true
-
     elseif event == "uninstall" then
         -- Clean up subscriptions
         turn.app.set_contact_subscriptions({})
         turn.logger.info("App uninstalled")
         return true
-
     elseif event == "config_changed" then
         local config = turn.app.get_config()
         turn.logger.info("Config updated: " .. turn.json.encode(config))
         return true
-
     elseif event == "contact_changed" then
         local contact = data.contact or data
         turn.logger.info("Contact changed: " .. contact.uuid)
         return true
-
     elseif event == "journey_event" then
         local function_name = data.function_name
         local args = data.args
@@ -85,24 +83,25 @@ function App.on_event(app, number, event, data)
             contact_id, experiment_id = args[1], args[2]
             local app_config = app.config
             local response, err = JourneyEvents.get_assignment_for_contact(
-                                      contact_id, experiment_id, app_config)
+                contact_id, experiment_id, app_config)
             if response then
-                return "continue", {assignment = response}
+                return "continue", { assignment = response }
             else
                 turn.logger.error(err)
                 return "error", err
             end
-
-        else
-            return "error", "Unknown function: " .. function_name
+        elseif function_name == "hello" then
+            return "continue", { message = "Hello, world! " .. args[1] .. "!" }
         end
-
     elseif event == "get_app_info_markdown" then
         local readme = turn.assets.load("README.md")
         if readme then return readme end
 
         return "# test_app\\n\\nApp documentation goes here."
-
+    elseif event == "upgrade" then
+        return true
+    elseif event == "downgrade" then
+        return true
     else
         turn.logger.warning("Unknown event: " .. event)
         return false
