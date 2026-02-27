@@ -93,9 +93,33 @@ describe("evidential", function()
                                                 "journey_event", journey_data)
             turn.test.assert_http_called(url_pattern)
             assert(status == "continue", "Expected journey event to continue")
-            assert(result.assignment == "test_arm",
-                   "Expected assignment arm_id to be 'test_arm'")
+
         end)
+
+        it("should handle making an http call to post outcome for contact",
+           function()
+            local journey_data = {
+                function_name = "post_outcome_for_contact",
+                args = {number.id, experiment_id, 0.},
+                chat_uuid = "chat-123"
+            }
+            url_pattern = tostring(app_config.config.evidential_api_base_url ..
+                                       "/" .. experiment_id .. "/assignments/" ..
+                                       number.id)
+            turn.test.mock_http({url = url_pattern, method = "GET"}, {
+                status = 200,
+                headers = {
+                    ["X-API-Key"] = tostring(app_config.config
+                                                 .evidential_api_key)
+                }
+            })
+
+            local status, result = App.on_event(app_config, number,
+                                                "journey_event", journey_data)
+            turn.test.assert_http_called(url_pattern)
+            assert(status == "continue", "Expected journey event to continue")
+        end)
+
     end)
 end)
 

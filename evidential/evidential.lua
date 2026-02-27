@@ -33,23 +33,6 @@ function App.on_event(app, number, event, data)
         local success_subscriptions, _ =
             turn.app.set_contact_subscriptions(contact_subscriptions) -- Subscribe to contact field changes
 
-        -- TESTING TIP: Use turn.test.assert_app_called() in your tests to verify app calls
-        -- Example: turn.test.assert_app_called("test_app", "update_contact_fields", { "experiment_id", "123", "assignment_arm_id", "456" })
-
-        -- TESTING TIP: Use turn.test.assert_http_called() to verify HTTP requests made by the app
-        -- Example: turn.test.assert_http_called({
-        --   method = "POST",
-        --   url = "https://api.evidential.com/v1/assignments",
-        --   body = turn.json.encode({ experiment_id = "123" })
-        -- })
-
-        -- Get journeys and load them
-        -- local journey_files = turn.assets.list("journeys")
-        -- for key, journey_file in ipairs(journey_files) do
-        --   turn.assets.load("journeys/" .. journey_file)
-        --   turn.logger.info("Loaded journey: " .. journey_file)
-        -- end
-
         if not success_config then
             turn.logger.error("Failed to update config")
             return false
@@ -75,6 +58,7 @@ function App.on_event(app, number, event, data)
         local contact = data.contact or data
         turn.logger.info("Contact changed: " .. contact.uuid)
         return true
+
     elseif event == "journey_event" then
         local function_name = data.function_name
         local args = data.args
@@ -90,9 +74,22 @@ function App.on_event(app, number, event, data)
                 turn.logger.error(err)
                 return "error", err
             end
-        elseif function_name == "hello" then
-            return "continue", {message = "Hello, world! " .. args[1] .. "!"}
+
+        elseif function_name == "post_outcome_for_contact" then
+            contact_id, experiment_id, outcome = args[1], args[2], args[3]
+            local response, err = JourneyEvents.post_outcome_for_contact(
+                                      contact_id, experiment_id, outcome)
+            if response then
+                return "continue", {outcome_response = response}
+            else
+                turn.logger.error(err)
+                return "error", err
+            end
+        else
+            turn.logger.warning("Unknown journey function: " .. function_name)
+            return "error", "Unknown journey function: " .. function_name
         end
+
     elseif event == "get_app_info_markdown" then
         local readme = turn.assets.load("README.md")
         if readme then return readme end

@@ -44,9 +44,9 @@
   "media_assets": [],
   "journeys": [
     {
-      "name": "Test Journey",
-      "description": "A test journey for Evidential integration",
-      "file": "test_journey.md"
+      "name": "Evidential Template Journey",
+      "description": "A template journey for Evidential integration",
+      "file": "evidential_template_journey.md"
     }
   ],
   "templates": [],
