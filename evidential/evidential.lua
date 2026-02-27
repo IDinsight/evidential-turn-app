@@ -81,17 +81,17 @@ function App.on_event(app, number, event, data)
 
         if function_name == "get_assignment_for_contact" then
             contact_id, experiment_id = args[1], args[2]
-            local app_config = app.config
+
             local response, err = JourneyEvents.get_assignment_for_contact(
-                contact_id, experiment_id, app_config)
+                                      contact_id, experiment_id)
             if response then
-                return "continue", { assignment = response }
+                return "continue", {assignment = response}
             else
                 turn.logger.error(err)
                 return "error", err
             end
         elseif function_name == "hello" then
-            return "continue", { message = "Hello, world! " .. args[1] .. "!" }
+            return "continue", {message = "Hello, world! " .. args[1] .. "!"}
         end
     elseif event == "get_app_info_markdown" then
         local readme = turn.assets.load("README.md")

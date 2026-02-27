@@ -3,7 +3,7 @@
     "type": "lua",
     "name": "evidential",
     "title": "Evidential",
-    "version": "0.1.3",
+    "version": "0.1.8",
     "description": "Evidential app for testing integration with the Evidential experiments platform",
     "dependencies": [],
     "config": {

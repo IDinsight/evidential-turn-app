@@ -29,16 +29,17 @@ describe("evidential", function()
         app_config = {
             uuid = "evidential-app-uuid",
             config = {
-                evidential_api_key = {value = "your-api-key"},
-                evidential_organization_id = {value = "your-organization-id"},
-                evidential_api_base_url = {
-                    value = "https://api.evidential.com/v1/experiments"
-                }
+                evidential_api_key = "your-api-key",
+                evidential_organization_id = "your-organization-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments"
             }
         }
+        turn.test.set_config(app_config.config)
+
         experiment_id = "experiment_123"
 
         number = {id = "123", msisdn = "+1234567890"}
+
     end)
 
     describe("install event", function()
@@ -76,10 +77,24 @@ describe("evidential", function()
                 args = {number.id, experiment_id},
                 chat_uuid = "chat-123"
             }
+            url_pattern = tostring(app_config.config.evidential_api_base_url ..
+                                       "/" .. experiment_id .. "/assignments/" ..
+                                       number.id)
+            turn.test.mock_http({url = url_pattern, method = "GET"}, {
+                status = 200,
+                headers = {
+                    ["X-API-Key"] = tostring(app_config.config
+                                                 .evidential_api_key)
+                },
+                body = json.encode({assignment = {arm_id = "test_arm"}})
+            })
+
             local status, result = App.on_event(app_config, number,
                                                 "journey_event", journey_data)
+            turn.test.assert_http_called(url_pattern)
             assert(status == "continue", "Expected journey event to continue")
-            assert(result.assignment ~= nil, "Expected assignment in result")
+            assert(result.assignment == "test_arm",
+                   "Expected assignment arm_id to be 'test_arm'")
         end)
     end)
 end)
