@@ -6,7 +6,7 @@ function Functions.get_assignment_for_contact(contact_id, experiment_id)
                               turn.app.get_config_value("evidential_api_base_url"),
                               experiment_id, 
                               contact_id)
-    local response = turn.http.request({
+    local body, status_code = turn.http.request({
         url = url,
         method = "GET",
         headers = {
@@ -14,11 +14,11 @@ function Functions.get_assignment_for_contact(contact_id, experiment_id)
         }
     })
 
-    if response.status == 200 then
-        local response_body = turn.json.decode(response.body)
+    if status_code == 200 then
+        local response_body = turn.json.decode(body)
         return response_body.assignment.arm_id
     else
-        return nil, "Failed to get assignment: " .. response.body
+        return nil, "Failed to get assignment: " .. (body or "unknown error")
     end
 end
 
@@ -27,7 +27,7 @@ function Functions.post_outcome_for_contact(contact_id, experiment_id, outcome)
                               turn.app.get_config_value("evidential_api_base_url"),
                               experiment_id, 
                               contact_id)
-    local response = turn.http.request({
+    local body, status_code = turn.http.request({
         url = url,
         method = "POST",
         headers = {
@@ -37,11 +37,11 @@ function Functions.post_outcome_for_contact(contact_id, experiment_id, outcome)
         body = turn.json.encode({ outcome = outcome })
     })
 
-    if response.status == 200 then
-        local response_body = turn.json.decode(response.body)
+    if status_code == 200 then
+        local response_body = turn.json.decode(body)
         return response_body
     else
-        return nil, "Failed to post outcome: " .. response.body
+        return nil, "Failed to post outcome: " .. (body or "unknown error")
     end
 end
 
