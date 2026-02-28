@@ -72,20 +72,23 @@ describe("evidential", function()
     describe("journey_event", function()
         it("should handle making an http call to get assignment for contact",
            function()
+            turn.app.update_config(app_config.config) -- Ensure config is set for journey event
+
             local journey_data = {
                 function_name = "get_assignment_for_contact",
                 args = {number.id, experiment_id},
                 chat_uuid = "chat-123"
             }
-            url_pattern = tostring(app_config.config.evidential_api_base_url ..
-                                       "/" .. experiment_id .. "/assignments/" ..
+
+            local config = turn.app.get_config()
+            url_pattern = tostring(config.evidential_api_base_url .. "/" ..
+                                       experiment_id .. "/assignments/" ..
                                        number.id)
             turn.test.mock_http({url = url_pattern, method = "GET"}, {
                 status = 200,
-                headers = {
-                    ["X-API-Key"] = tostring(app_config.config
-                                                 .evidential_api_key)
-                },
+                -- headers = {
+                --     ["X-API-Key"] = tostring(config.evidential_api_key)
+                -- },
                 body = json.encode({assignment = {arm_id = "test_arm"}})
             })
 

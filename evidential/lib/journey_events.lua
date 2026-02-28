@@ -13,6 +13,7 @@ function Functions.get_assignment_for_contact(contact_id, experiment_id)
             ["X-API-Key"] = tostring(turn.app.get_config_value("evidential_api_key")),
         }
     })
+    print("Body: " .. body)
 
     if status_code == 200 then
         local response = turn.json.decode(body)
