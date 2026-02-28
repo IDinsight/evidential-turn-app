@@ -1,0 +1,54 @@
+{
+  "app": {
+    "type": "lua",
+    "name": "evidential",
+    "title": "Evidential",
+    "version": "0.1.0",
+    "description": "Evidential app for testing integration with the Evidential experiments platform",
+    "dependencies": [],
+    "config": {
+      "evidential_api_key": {
+        "type": "string",
+        "label": "Evidential API Key",
+        "required": true,
+        "value": ""
+      },
+      "evidential_organization_id": {
+        "type": "string",
+        "label": "Evidential Organization ID",
+        "required": true,
+        "value": ""
+      },
+      "evidential_api_base_url": {
+        "type": "string",
+        "label": "Evidential API Base URL",
+        "required": true,
+        "value": "https://api.evidential.dev/v1/experiments"
+      }
+    }
+  },
+  "contact_fields": [
+    {
+      "type": "STRING",
+      "name": "experiment_id",
+      "display": "Experiment ID",
+      "private": false
+    },
+    {
+      "type": "STRING",
+      "name": "assignment_arm_id",
+      "display": "Assignment Arm ID",
+      "private": false
+    }
+  ],
+  "media_assets": [],
+  "journeys": [
+    {
+      "name": "Evidential Template Journey",
+      "description": "A template journey for Evidential integration",
+      "file": "evidential_template_journey.md"
+    }
+  ],
+  "templates": [],
+  "flows": []
+}
