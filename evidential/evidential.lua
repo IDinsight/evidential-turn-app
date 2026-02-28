@@ -76,7 +76,7 @@ function App.on_event(app, number, event, data)
             end
 
         elseif function_name == "post_outcome_for_contact" then
-            contact_id, experiment_id, outcome = args[1], args[2], args[3]
+            local contact_id, experiment_id, outcome = args[1], args[2], args[3]
             local response, err = JourneyEvents.post_outcome_for_contact(
                                       contact_id, experiment_id, outcome)
             if response then
