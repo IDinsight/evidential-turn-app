@@ -64,6 +64,8 @@ function App.on_event(app, number, event, data)
         local args = data.args
 
         if function_name == "get_assignment_for_contact" then
+            assert(#args == 2,
+                   "Expected 2 arguments for get_assignment_for_contact")
             local contact_id, experiment_id = args[1], args[2]
 
             local response, err = JourneyEvents.get_assignment_for_contact(
@@ -76,6 +78,8 @@ function App.on_event(app, number, event, data)
             end
 
         elseif function_name == "post_outcome_for_contact" then
+            assert(#args == 3,
+                   "Expected 3 arguments for post_outcome_for_contact")
             local contact_id, experiment_id, outcome = args[1], args[2], args[3]
             local response, err = JourneyEvents.post_outcome_for_contact(
                                       contact_id, experiment_id, outcome)
