@@ -14,11 +14,10 @@ function Functions.get_assignment_for_contact(contact_id, experiment_id)
         }
     })
 
-    if response.status_code == 200 then
+    if response.status == 200 then
         local response_body = turn.json.decode(response.body)
         return response_body.assignment.arm_id
     else
-        turn.logger.error("Failed to get assignment: " .. response.body)
         return nil, "Failed to get assignment: " .. response.body
     end
 end
@@ -38,11 +37,10 @@ function Functions.post_outcome_for_contact(contact_id, experiment_id, outcome)
         body = turn.json.encode({ outcome = outcome })
     })
 
-    if response.status_code == 200 then
+    if response.status == 200 then
         local response_body = turn.json.decode(response.body)
         return response_body
     else
-        turn.logger.error("Failed to post outcome: " .. response.body)
         return nil, "Failed to post outcome: " .. response.body
     end
 end

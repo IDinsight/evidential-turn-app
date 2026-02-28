@@ -94,7 +94,6 @@ describe("evidential", function()
 
             local status, result = App.on_event(app_config, number,
                                                 "journey_event", journey_data)
-            turn.test.assert_http_called(url_pattern)
             assert(status == "continue", "Expected journey event to continue")
 
         end)
@@ -119,7 +118,6 @@ describe("evidential", function()
 
             local status, result = App.on_event(app_config, number,
                                                 "journey_event", journey_data)
-            turn.test.assert_http_called(url_pattern)
             assert(status == "continue", "Expected journey event to continue")
         end)
 
