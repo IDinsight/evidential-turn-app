@@ -81,9 +81,10 @@ describe("evidential", function()
             }
 
             local config = turn.app.get_config()
-            url_pattern = tostring(config.evidential_api_base_url .. "/" ..
-                                       experiment_id .. "/assignments/" ..
-                                       number.id)
+            local url_pattern = tostring(
+                                    config.evidential_api_base_url .. "/" ..
+                                        experiment_id .. "/assignments/" ..
+                                        number.id)
             turn.test.mock_http({url = url_pattern, method = "GET"}, {
                 status = 200,
                 -- headers = {
@@ -105,9 +106,10 @@ describe("evidential", function()
                 args = {number.id, experiment_id, 0.},
                 chat_uuid = "chat-123"
             }
-            url_pattern = tostring(app_config.config.evidential_api_base_url ..
-                                       "/" .. experiment_id .. "/assignments/" ..
-                                       number.id)
+            local url_pattern = tostring(app_config.config
+                                             .evidential_api_base_url .. "/" ..
+                                             experiment_id .. "/assignments/" ..
+                                             number.id)
             turn.test.mock_http({url = url_pattern, method = "GET"}, {
                 status = 200,
                 headers = {
