@@ -110,7 +110,7 @@ describe("evidential", function()
                                              .evidential_api_base_url .. "/" ..
                                              experiment_id .. "/assignments/" ..
                                              number.id)
-            turn.test.mock_http({url = url_pattern, method = "GET"}, {
+            turn.test.mock_http({url = url_pattern, method = "POST"}, {
                 status = 200,
                 headers = {
                     ["X-API-Key"] = tostring(app_config.config
