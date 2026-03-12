@@ -1,6 +1,7 @@
 local App = {}
 local turn = require("turn")
 local JourneyEvents = require("lib/journey_events")
+local JourneyGenerator = require("lib/journey_generator")
 
 --[[
   Main entry point for all app events.
@@ -53,7 +54,44 @@ function App.on_event(app, number, event, data)
     elseif event == "config_changed" then
         local config = turn.app.get_config()
         turn.logger.info("Config updated: " .. turn.json.encode(config))
-        return true
+
+        local experiment_config = config.experiment_config
+        if not experiment_config then
+            turn.logger.error("Experiment config is missing in app config")
+            return false
+        end
+
+        -- Parse experiment config and generate journey notebook
+        local experiment_config_table = turn.json.decode(experiment_config)
+        local experiment_name = experiment_config_table.experiment_name or
+                                    "Unnamed Experiment"
+        local experiment_id = experiment_config_table.experiment_id
+        local arms = experiment_config_table.arms
+        turn.logger.info("Parsed experiment config: experiment_name=" ..
+                             experiment_name .. ", experiment_id=" ..
+                             tostring(experiment_id) .. ", arms=" ..
+                             turn.json.encode(arms))
+        if not experiment_id or not arms then
+            turn.logger.error("Experiment config is missing required fields")
+            return false
+        end
+        local journey_notebook = JourneyGenerator.generate(experiment_id, arms,
+                                                           true)
+        turn.logger.info("Generated journey notebook: " .. journey_notebook)
+
+        local success, result = turn.journeys.create({
+            name = "Evidential Experiment Journey - " .. experiment_name,
+            notebook = journey_notebook
+        })
+
+        if success then
+            turn.logger.info("Journey created successfully: " .. result.uuid)
+            return true
+        else
+            turn.logger.error("Failed to create journey: " .. tostring(result))
+            return false
+        end
+
     elseif event == "contact_changed" then
         local contact = data.contact or data
         turn.logger.info("Contact changed: " .. contact.uuid)

@@ -1,6 +1,6 @@
-# test_app
+# Evidential Turn.io App
 
-A Turn.io Lua app.
+An app to integrate with the [Evidential experiments platform](https://evidential.dev/) and fetch experiment assignments for contacts on Turn.io.
 
 ## Quick Start
 
@@ -28,14 +28,15 @@ turn-app build      # Build ZIP
 ## Project Structure
 
 ```
-test_app/
-├── test_app.lua              # Main app code
+evidential/
+├── evidential.lua              # Main app code
 ├── spec/
-│   └── test_app_spec.lua     # Tests
+│   └── evidential_spec.lua     # Tests
 ├── assets/
 │   ├── manifest.json            # App metadata (required)
 │   ├── README.md                # App documentation (for UI)
 │   ├── journeys/                # Journey templates
+│   ├── journeys_fragments/      # Fragments to generate custom journeys
 │   └── liquid/                  # Liquid templates
 ├── lib/                         # Additional Lua modules
 ├── Makefile                     # Build commands
@@ -48,14 +49,14 @@ test_app/
 
 Tests use the [lester](https://github.com/bjornbytes/lester) testing framework (Busted-compatible API).
 
-See `spec/test_app_spec.lua` for examples.
+See `spec/evidential_spec.lua` for examples.
 
 **For comprehensive testing documentation**, including testing API reference, common patterns, and debugging tips, see [TESTING.md](TESTING.md).
 
 ## Building
 
 The build process creates a ZIP file with:
-- Main Lua file (`test_app.lua`)
+- Main Lua file (`evidential.lua`)
 - `assets/` directory (including manifest.json and README.md for UI display)
 - `lib/` directory (if present)
 

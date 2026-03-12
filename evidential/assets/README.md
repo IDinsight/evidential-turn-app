@@ -1,12 +1,16 @@
-# Test_app
+# Evidential Turn.io App
 
-A Turn.io Lua app - update this description to explain what your app does.
+An app to integrate with the [Evidential experiments platform](https://app.evidential.dev/) and fetch experiment assignments for contacts on Turn.io.
 
-> **Note**: This file is displayed in the Turn.io UI when users view your app. Edit this file directly to customize the title and description.
 
 ## Configuration
 
-Configure your app settings in the Turn.io UI.
+The app requires the following configuration parameters (set in Turn.io UI):
+- `Evidential API Base URL`: Base URL for Evidential API (e.g. `https://api.evidential.dev/v1/experiments`)
+- `Evidential API Key`: API key for authenticating with Evidential API
+- `Evidential Organization ID`: Organization ID for your Evidential account
+- `Evidential Experiment Config`: JSON string with experiment details, e.g. `{"experiment_name": "exp_name", "experiment_id": "exp_12345", "arms": {"arm_id_1": "journey_uuid_1", "arm_id_2": "journey_uuid_2"}}`
+NB: the `Evidential Experiment Config` should include the experiment name, experiment ID, and a mapping of arm IDs to journey UUIDs (for routing contacts to different existing journeys based on their assigned arm)
 
 ## Webhook URL
 
@@ -22,15 +26,27 @@ You can handle incoming HTTP requests in your app's `on_event` function when `ev
 
 ## Journey Functions
 
-### hello()
+### get_assignment_for_contact(contact_id, experiment_id)
 
-Returns a greeting message.
+Makes an API call to Evidential to fetch the experiment assignment for a given contact and experiment ID.
 
 **Usage in Journey:**
 ```elixir
-card Greeting do
-  result = app("test_app", "hello", [])
-  text("@result.message")
+card GetAssignment do
+  result = app("evidential", "get_assignment_for_contact", [@contact.whatsapp_id, experiment_id])
+  text("@result.assignment")
+end
+```
+
+### post_outcome_for_contact(contact_id, experiment_id, outcome)
+
+Posts the outcome for a contact's experiment assignment back to Evidential.
+
+**Usage in Journey:**
+```elixir
+card PostOutcome do
+  result = app("evidential", "post_outcome_for_contact", [@contact.whatsapp_id, experiment_id, outcome])
+  text("@result.status")
 end
 ```
 
