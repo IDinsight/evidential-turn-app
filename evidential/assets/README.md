@@ -1,7 +1,6 @@
 # Evidential Turn.io App
 
-An app to integrate with the [Evidential experiments platform](https://app.evidential.dev/) and fetch experiment assignments for contacts on Turn.io.
-
+An app to integrate with the [Evidential experiments platform](https://app.evidential.dev/) and run A/B experiments on Turn.io.
 
 ## Configuration
 
@@ -9,46 +8,66 @@ The app requires the following configuration parameters (set in Turn.io UI):
 - `Evidential API Base URL`: Base URL for Evidential API (e.g. `https://api.evidential.dev/v1/experiments`)
 - `Evidential API Key`: API key for authenticating with Evidential API
 - `Evidential Organization ID`: Organization ID for your Evidential account
-- `Evidential Experiment Config`: JSON string with experiment details, e.g. `{"experiment_name": "exp_name", "experiment_id": "exp_12345", "arms": {"arm_id_1": "journey_uuid_1", "arm_id_2": "journey_uuid_2"}}`
-NB: the `Evidential Experiment Config` should include the experiment name, experiment ID, and a mapping of arm IDs to journey UUIDs (for routing contacts to different existing journeys based on their assigned arm)
+- `Evidential Experiment Config`: JSON string with experiment details:
 
-## Webhook URL
-
-Your app's webhook endpoint will be available at:
-
+```json
+{
+  "experiment_name": "My Experiment",
+  "experiment_id": "exp_12345",
+  "arms": {
+    "arm_id_1": "journey-uuid-for-arm-1",
+    "arm_id_2": "journey-uuid-for-arm-2"
+  }
+}
 ```
-https://whatsapp.turn.io/apps/{app_uuid}/webhook
-```
 
-Replace `{app_uuid}` with your actual app UUID from the Turn.io UI.
-
-You can handle incoming HTTP requests in your app's `on_event` function when `event == "http_request"`.
+The `arms` map links each Evidential arm ID to the UUID of the Turn journey that should be started for contacts assigned to that arm. Create the arm journeys first, then reference their UUIDs here.
 
 ## Journey Functions
 
-### get_assignment_for_contact(contact_id, experiment_id)
+### route_to_experiment(contact_id)
 
-Makes an API call to Evidential to fetch the experiment assignment for a given contact and experiment ID.
+Used by the installed journey. Handles the full routing flow:
+1. Calls Evidential API to get the contact's arm assignment
+2. Resolves the arm ID to a journey UUID from config
+3. Updates the contact's profile fields (`assignment_arm_id`, `experiment_id`)
+4. Starts the arm journey via `turn.journeys.start()`
+
+This function is called automatically by the installed Evidential Experiment journey.
+
+### get_assignment_for_contact(contact_id)
+
+Returns the contact's arm assignment without routing. For custom journeys that want to handle routing themselves.
+
+**Returns on success:** `{assignment = "arm_id", experiment_id = "exp_id", journey_uuid = "uuid"}`
 
 **Usage in Journey:**
-```elixir
-card GetAssignment do
-  result = app("evidential", "get_assignment_for_contact", [@contact.whatsapp_id, experiment_id])
-  text("@result.assignment")
-end
+```
+app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id"])
 ```
 
-### post_outcome_for_contact(contact_id, experiment_id, outcome)
+### post_outcome_for_contact(contact_id, outcome)
 
 Posts the outcome for a contact's experiment assignment back to Evidential.
 
 **Usage in Journey:**
-```elixir
-card PostOutcome do
-  result = app("evidential", "post_outcome_for_contact", [@contact.whatsapp_id, experiment_id, outcome])
-  text("@result.status")
-end
 ```
+app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "@outcome_value"])
+```
+
+## Arm Journey Contract
+
+Arm journeys are authored by the experiment operator and are self-contained. Each arm journey should:
+
+1. Deliver the arm's content/intervention
+2. Collect the outcome (e.g., a rating or response)
+3. Call `post_outcome_for_contact` to record the outcome in Evidential
+
+## Breaking Changes in 0.2.0
+
+- `get_assignment_for_contact` now takes 1 argument (was 2). Experiment ID is read from config.
+- `post_outcome_for_contact` now takes 2 arguments (was 3). Experiment ID is read from config.
+- The installed journey has changed. The old template with hardcoded arm IDs is replaced by a generic journey that delegates routing to the app.
 
 ## Development
 

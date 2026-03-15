@@ -1,20 +1,7 @@
--- spec/test_app_spec.lua
--- Generated test file for test_app
---
--- TESTING GUIDE:
--- This file demonstrates common testing patterns for Turn.io Lua apps.
--- For complete testing API reference, visit:
--- https://whatsapp.turn.io/docs
---
--- Quick Tips:
--- - Use turn.test.reset() in before() to start each test with clean state
--- - Mock HTTP calls with turn.test.mock_http(request, response)
--- - Mock app calls with turn.test.mock_app_call(app, event, response)
--- - Verify HTTP calls with turn.test.assert_http_called(request)
--- - Verify app calls with turn.test.assert_app_called(app, event, data)
+-- spec/evidential_spec.lua
 local lester = require('lester')
 local turn = require('turn')
-local json = turn.json -- JSON encoding/decoding from turn module
+local json = turn.json
 local App = require('evidential')
 
 local describe, it, before = lester.describe, lester.it, lester.before
@@ -29,26 +16,28 @@ describe("evidential", function()
         app_config = {
             uuid = "evidential-app-uuid",
             config = {
-                evidential_api_key = "your-api-key",
-                evidential_organization_id = "your-organization-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments"
+                evidential_api_key = "test-api-key",
+                evidential_organization_id = "test-org-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
+                experiment_config = json.encode({
+                    experiment_name = "Test Experiment",
+                    experiment_id = "experiment_123",
+                    arms = {
+                        arm_abc = "journey-uuid-1",
+                        arm_def = "journey-uuid-2"
+                    }
+                })
             }
         }
         turn.test.set_config(app_config.config)
 
-        experiment_id = "experiment_123"
-
         number = {id = "123", msisdn = "+1234567890"}
-
     end)
 
     describe("install event", function()
         it("should handle installation", function()
             local result = App.on_event(app_config, number, "install", {})
             assert(result == true, "Expected install to return true")
-            -- assert(result.contact_fields.created == 2, "Expected 2 contact fields to be created")
-
-            -- Verify app config was updated with manifest
 
             local config = turn.app.get_config()
             local required_fields = {
@@ -69,63 +58,259 @@ describe("evidential", function()
         end)
     end)
 
+    describe("config_changed event", function()
+        it("should return true for valid config", function()
+            local result = App.on_event(app_config, number, "config_changed", {})
+            assert(result == true, "Expected config_changed to return true for valid config")
+        end)
+
+        it("should return false when experiment_config is missing", function()
+            turn.app.set_config({
+                evidential_api_key = "test-api-key",
+                evidential_organization_id = "test-org-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments"
+            })
+            local result = App.on_event(app_config, number, "config_changed", {})
+            assert(result == false, "Expected config_changed to return false when experiment_config is missing")
+        end)
+
+        it("should return false for malformed JSON in experiment_config", function()
+            turn.app.set_config({
+                evidential_api_key = "test-api-key",
+                evidential_organization_id = "test-org-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
+                experiment_config = "not valid json{{"
+            })
+            local result = App.on_event(app_config, number, "config_changed", {})
+            assert(result == false, "Expected config_changed to return false for malformed JSON")
+        end)
+
+        it("should return false when experiment_id is missing", function()
+            turn.app.set_config({
+                evidential_api_key = "test-api-key",
+                evidential_organization_id = "test-org-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
+                experiment_config = json.encode({
+                    arms = {arm_abc = "journey-uuid-1"}
+                })
+            })
+            local result = App.on_event(app_config, number, "config_changed", {})
+            assert(result == false, "Expected config_changed to return false when experiment_id is missing")
+        end)
+
+        it("should return false when arms is missing", function()
+            turn.app.set_config({
+                evidential_api_key = "test-api-key",
+                evidential_organization_id = "test-org-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
+                experiment_config = json.encode({
+                    experiment_id = "experiment_123"
+                })
+            })
+            local result = App.on_event(app_config, number, "config_changed", {})
+            assert(result == false, "Expected config_changed to return false when arms is missing")
+        end)
+
+        it("should return false when arms is empty", function()
+            turn.app.set_config({
+                evidential_api_key = "test-api-key",
+                evidential_organization_id = "test-org-id",
+                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
+                experiment_config = json.encode({
+                    experiment_id = "experiment_123",
+                    arms = {}
+                })
+            })
+            local result = App.on_event(app_config, number, "config_changed", {})
+            assert(result == false, "Expected config_changed to return false when arms is empty")
+        end)
+    end)
+
     describe("journey_event", function()
-        it("should handle making an http call to get assignment for contact",
-           function()
-            turn.app.update_config(app_config.config) -- Ensure config is set for journey event
+        describe("route_to_experiment", function()
+            it("should route contact to arm journey", function()
+                -- Register a contact findable by msisdn
+                turn.test.add_contact({
+                    uuid = "test-route-contact",
+                    details = {msisdn = number.msisdn, name = "Test Contact"}
+                })
 
-            local journey_data = {
-                function_name = "get_assignment_for_contact",
-                args = {number.id, experiment_id},
-                chat_uuid = "chat-123"
-            }
+                -- Register the arm journey so turn.journeys.start() can find it
+                turn.test.add_journey({
+                    uuid = "journey-uuid-1",
+                    name = "Arm ABC Journey",
+                    enabled = true
+                })
 
-            local config = turn.app.get_config()
-            local url_pattern = tostring(
-                                    config.evidential_api_base_url .. "/" ..
-                                        experiment_id .. "/assignments/" ..
-                                        number.id)
-            turn.test.mock_http({url = url_pattern, method = "GET"}, {
-                status = 200,
-                -- headers = {
-                --     ["X-API-Key"] = tostring(config.evidential_api_key)
-                -- },
-                body = json.encode({assignment = {arm_id = "test_arm"}})
-            })
-
-            local status, result = App.on_event(app_config, number,
-                                                "journey_event", journey_data)
-            assert(status == "continue", "Expected journey event to continue")
-
-        end)
-
-        it("should handle making an http call to post outcome for contact",
-           function()
-            local journey_data = {
-                function_name = "post_outcome_for_contact",
-                args = {number.id, experiment_id, 0.},
-                chat_uuid = "chat-123"
-            }
-            local url_pattern = tostring(app_config.config
-                                             .evidential_api_base_url .. "/" ..
-                                             experiment_id .. "/assignments/" ..
-                                             number.id)
-            turn.test.mock_http({url = url_pattern, method = "POST"}, {
-                status = 200,
-                headers = {
-                    ["X-API-Key"] = tostring(app_config.config
-                                                 .evidential_api_key)
+                local journey_data = {
+                    function_name = "route_to_experiment",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
                 }
-            })
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({assignment = {arm_id = "arm_abc"}})
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "continue", "Expected routing to succeed")
+                assert(result.routed == true, "Expected routed flag to be true")
+                assert(result.arm_id == "arm_abc", "Expected arm_id in result")
+            end)
+
+            it("should return error when Evidential API fails", function()
+                local journey_data = {
+                    function_name = "route_to_experiment",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
+                }
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890", {
+                    method = "GET",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "error", "Expected error status on API failure")
+            end)
+
+            it("should return error when arm_id has no configured journey", function()
+                local journey_data = {
+                    function_name = "route_to_experiment",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
+                }
+
+                -- Return an arm_id that's not in the config's arms map
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({assignment = {arm_id = "arm_unknown"}})
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "error", "Expected error for unmapped arm")
+            end)
+        end)
+
+        it("should return error for unknown journey function", function()
+            local journey_data = {
+                function_name = "nonexistent_function",
+                args = {"arg1"},
+                chat_uuid = "chat-123"
+            }
 
             local status, result = App.on_event(app_config, number,
                                                 "journey_event", journey_data)
-            assert(status == "continue", "Expected journey event to continue")
+            assert(status == "error", "Expected error for unknown function")
         end)
 
+        describe("get_assignment_for_contact", function()
+            it("should return structured result with arm_id, experiment_id, and journey_uuid", function()
+                local journey_data = {
+                    function_name = "get_assignment_for_contact",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
+                }
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({assignment = {arm_id = "arm_abc"}})
+                })
+
+                local status, result = App.on_event(app_config, number, "journey_event", journey_data)
+                assert(status == "continue", "Expected journey event to continue")
+                assert(result.assignment == "arm_abc", "Expected arm_id in result")
+                assert(result.experiment_id == "experiment_123", "Expected experiment_id in result")
+                assert(result.journey_uuid == "journey-uuid-1", "Expected journey_uuid resolved from config")
+            end)
+
+            it("should return error when Evidential API fails", function()
+                local journey_data = {
+                    function_name = "get_assignment_for_contact",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
+                }
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890", {
+                    method = "GET",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "error", "Expected error status on API failure")
+            end)
+
+            it("should return nil journey_uuid when arm_id is not in config", function()
+                local journey_data = {
+                    function_name = "get_assignment_for_contact",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
+                }
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({assignment = {arm_id = "arm_unknown"}})
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "continue", "Expected continue even with unmapped arm")
+                assert(result.assignment == "arm_unknown", "Expected arm_id in result")
+                assert(result.journey_uuid == nil, "Expected nil journey_uuid for unmapped arm")
+            end)
+        end)
+
+        describe("post_outcome_for_contact", function()
+            it("should post outcome to Evidential API", function()
+                local journey_data = {
+                    function_name = "post_outcome_for_contact",
+                    args = {number.msisdn, 0.},
+                    chat_uuid = "chat-123"
+                }
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890/outcome", {
+                    method = "POST",
+                    status = 200,
+                    body = json.encode({status = "recorded"})
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "continue", "Expected journey event to continue")
+                assert(result.outcome_response ~= nil, "Expected outcome_response in result")
+            end)
+
+            it("should return error when Evidential API fails", function()
+                local journey_data = {
+                    function_name = "post_outcome_for_contact",
+                    args = {number.msisdn, 0.},
+                    chat_uuid = "chat-123"
+                }
+
+                turn.test.mock_http("experiments/experiment_123/assignments/%+1234567890/outcome", {
+                    method = "POST",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event", journey_data)
+                assert(status == "error", "Expected error status on API failure")
+            end)
+        end)
     end)
 end)
 
--- Report test results and exit with appropriate code
 lester.report()
 lester.exit()
