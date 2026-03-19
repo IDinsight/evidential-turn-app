@@ -1,10 +1,10 @@
 local turn = require("turn")
 local Functions = {}
 
-function Functions.get_assignment_for_contact(contact_id)
+function Functions.get_assignment_for_contact(contact_id, experiment_data)
     local config = turn.app.get_config()
-    local experiment_config = turn.json.decode(config.experiment_config)
-    local experiment_id = experiment_config.experiment_id
+
+    local experiment_id = experiment_data.experiment_id
 
     local url = string.format("%s/%s/assignments/%s",
                               config.evidential_api_base_url,
@@ -25,7 +25,7 @@ function Functions.get_assignment_for_contact(contact_id)
             return nil, "Invalid response: missing assignment data"
         end
         local arm_id = response_body.assignment.arm_id
-        local journey_uuid = experiment_config.arms[arm_id]
+        local journey_uuid = experiment_data.arms[arm_id]
         return {
             arm_id = arm_id,
             experiment_id = experiment_id,
@@ -36,10 +36,10 @@ function Functions.get_assignment_for_contact(contact_id)
     end
 end
 
-function Functions.post_outcome_for_contact(contact_id, outcome)
+function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data)
     local config = turn.app.get_config()
-    local experiment_config = turn.json.decode(config.experiment_config)
-    local experiment_id = experiment_config.experiment_id
+
+    local experiment_id = experiment_data.experiment_id
 
     local url = string.format("%s/%s/assignments/%s/outcome",
                               config.evidential_api_base_url,

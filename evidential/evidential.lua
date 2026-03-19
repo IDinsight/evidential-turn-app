@@ -19,20 +19,22 @@ function App.on_event(app, number, event, data)
     turn.logger.info("Event received: " .. event)
 
     if event == "install" then
-        -- Load manifest and update app config with manifest config
         local manifest_json = turn.assets.load("manifest.json")
         local manifest = turn.json.decode(manifest_json)
         turn.logger.info("Installing from the manifest file")
         turn.manifest.install(manifest)
 
-        local success_config, _ = turn.app.update_config(manifest.app.config) -- Store manifest in app config for later use
+        -- Set default config values
+        local success_config, _ = turn.app.update_config({
+            evidential_api_base_url = "https://api.evidential.dev/v1/experiments"
+        })
 
         -- Subscribe to contact field changes for experiment_id and assignment_arm_id
         local contact_subscriptions = turn.app.get_contact_subscriptions()
         table.insert(contact_subscriptions, "experiment_id")
         table.insert(contact_subscriptions, "assignment_arm_id")
         local success_subscriptions, _ =
-            turn.app.set_contact_subscriptions(contact_subscriptions) -- Subscribe to contact field changes
+            turn.app.set_contact_subscriptions(contact_subscriptions)
 
         if not success_config then
             turn.logger.error("Failed to update config")
@@ -47,8 +49,13 @@ function App.on_event(app, number, event, data)
         turn.logger.info("App installed successfully!")
         return true
     elseif event == "uninstall" then
-        -- Clean up subscriptions
+        -- Clean up subscriptions and data dictionary
         turn.app.set_contact_subscriptions({})
+        turn.data.dictionary.delete_global("evidential_experiment")
+        local journey_mapping = turn.app.get_journey_mapping()
+        for _, journey_uuid in pairs(journey_mapping) do
+            turn.data.dictionary.delete_local(journey_uuid, "evidential_experiment")
+        end
         turn.logger.info("App uninstalled")
         return true
     elseif event == "config_changed" then
@@ -85,6 +92,22 @@ function App.on_event(app, number, event, data)
             return false
         end
 
+        -- Write parsed config to data dictionary so journey events
+        -- can read structured data without re-parsing JSON on every call.
+        -- Write to both local (for @local.evidential_experiment.* in Stacks)
+        -- and global (for programmatic access from any journey context).
+        local journey_mapping = turn.app.get_journey_mapping()
+        for _, journey_uuid in pairs(journey_mapping) do
+            turn.data.dictionary.set_local(journey_uuid, "evidential_experiment", {
+                experiment_id = experiment_config.experiment_id,
+                arms = experiment_config.arms
+            }, { replace = true })
+        end
+        turn.data.dictionary.set_global("evidential_experiment", {
+            experiment_id = experiment_config.experiment_id,
+            arms = experiment_config.arms
+        }, { replace = true })
+
         turn.logger.info("Config validated: experiment=" ..
             experiment_config.experiment_id ..
             ", arms=" .. turn.json.encode(experiment_config.arms))
@@ -99,11 +122,20 @@ function App.on_event(app, number, event, data)
         local function_name = data.function_name
         local args = data.args
 
+        -- Look up experiment data from the global data dictionary
+        local experiment_data = turn.data.dictionary.get_global("evidential_experiment")
+        if not experiment_data then
+            local msg = "Experiment config not found in data dictionary"
+            turn.logger.error(msg)
+            return "error", msg
+        end
+
         if function_name == "route_to_experiment" then
             assert(#args == 1, "Expected 1 argument for route_to_experiment")
             local contact_id = args[1]
 
-            local result, err = JourneyEvents.get_assignment_for_contact(contact_id)
+            local result, err = JourneyEvents.get_assignment_for_contact(
+                contact_id, experiment_data)
             if not result then
                 turn.logger.error(err)
                 return "error", err
@@ -146,7 +178,7 @@ function App.on_event(app, number, event, data)
             local contact_id = args[1]
 
             local result, err = JourneyEvents.get_assignment_for_contact(
-                                    contact_id)
+                                    contact_id, experiment_data)
             if result then
                 return "continue", {
                     assignment = result.arm_id,
@@ -163,7 +195,7 @@ function App.on_event(app, number, event, data)
                    "Expected 2 arguments for post_outcome_for_contact")
             local contact_id, outcome = args[1], args[2]
             local response, err = JourneyEvents.post_outcome_for_contact(
-                                      contact_id, outcome)
+                                      contact_id, outcome, experiment_data)
             if response then
                 return "continue", {outcome_response = response}
             else

@@ -32,6 +32,11 @@ describe("evidential", function()
         turn.test.set_config(app_config.config)
 
         number = {id = "123", msisdn = "+1234567890"}
+
+        -- Install first (creates journey mapping), then config_changed
+        -- populates the local data dictionary for journey events
+        App.on_event(app_config, number, "install", {})
+        App.on_event(app_config, number, "config_changed", {})
     end)
 
     describe("install event", function()
@@ -62,6 +67,25 @@ describe("evidential", function()
         it("should return true for valid config", function()
             local result = App.on_event(app_config, number, "config_changed", {})
             assert(result == true, "Expected config_changed to return true for valid config")
+        end)
+
+        it("should write experiment config to data dictionary", function()
+            App.on_event(app_config, number, "config_changed", {})
+
+            -- Check global dictionary (used by journey event handlers)
+            local data = turn.data.dictionary.get_global("evidential_experiment")
+            assert(data ~= nil, "Expected global data dictionary entry to exist")
+            assert(data.experiment_id == "experiment_123", "Expected experiment_id in dictionary")
+            assert(data.arms ~= nil, "Expected arms in dictionary")
+            assert(data.arms.arm_abc == "journey-uuid-1", "Expected arm mapping in dictionary")
+
+            -- Check local dictionary (available as @local.evidential_experiment.* in Stacks)
+            local journey_mapping = turn.app.get_journey_mapping()
+            for _, journey_uuid in pairs(journey_mapping) do
+                local local_data = turn.data.dictionary.get_local(journey_uuid, "evidential_experiment")
+                assert(local_data ~= nil, "Expected local data dictionary entry to exist")
+                assert(local_data.experiment_id == "experiment_123", "Expected experiment_id in local dictionary")
+            end
         end)
 
         it("should return false when experiment_config is missing", function()
