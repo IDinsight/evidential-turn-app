@@ -1,6 +1,6 @@
 # Evidential Turn.io App
 
-An app to integrate with the [Evidential experiments platform](https://app.evidential.dev/) and run A/B experiments on Turn.io.
+An app to integrate with the [Evidential experiments platform](https://app.evidential.dev/) and run experiments on Turn.io.
 
 ## Configuration
 
@@ -21,7 +21,7 @@ The app requires the following configuration parameters (set in Turn.io UI):
 }
 ```
 
-The `arms` map links each Evidential arm ID to the UUID of the Turn journey that should be started for contacts assigned to that arm. Create the arm journeys first, then reference their UUIDs here.
+The `arms` map links each arm ID in the experiment to the UUID of the Turn journey that should be started for contacts assigned to that arm. Create the arm journeys first, then reference their UUIDs here (see [Arm Journey Contract](#arm-journey-contract) for more details).
 
 ## Journey Functions
 
@@ -34,6 +34,12 @@ Used by the installed journey. Handles the full routing flow:
 4. Starts the arm journey via `turn.journeys.start()`
 
 This function is called automatically by the installed Evidential Experiment journey.
+
+**Usage in Journey:**
+```
+app("evidential", "route_to_experiment", ["@contact.whatsapp_id"])
+```
+
 
 ### get_assignment_for_contact(contact_id)
 
@@ -48,7 +54,8 @@ app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id"])
 
 ### post_outcome_for_contact(contact_id, outcome)
 
-Posts the outcome for a contact's experiment assignment back to Evidential.
+Posts the outcome for a contact's experiment assignment back to Evidential. This is only relevant for bandit experiments where the outcome is collected in the arm journey and needs to be sent back to Evidential for analysis.
+Otherwise, the outcome is accessed via a separate ETL/database integration with Evidential.
 
 **Usage in Journey:**
 ```
@@ -62,12 +69,6 @@ Arm journeys are authored by the experiment operator and are self-contained. Eac
 1. Deliver the arm's content/intervention
 2. Collect the outcome (e.g., a rating or response)
 3. Call `post_outcome_for_contact` to record the outcome in Evidential
-
-## Breaking Changes in 0.2.0
-
-- `get_assignment_for_contact` now takes 1 argument (was 2). Experiment ID is read from config.
-- `post_outcome_for_contact` now takes 2 arguments (was 3). Experiment ID is read from config.
-- The installed journey has changed. The old template with hardcoded arm IDs is replaced by a generic journey that delegates routing to the app.
 
 ## Development
 
