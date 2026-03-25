@@ -1,7 +1,8 @@
 local App = {}
 local turn = require("turn")
 local JourneyEvents = require("lib/journey_events")
-
+local InstallEvents = require("lib/install_events")
+local ConfigChangedEvents = require("lib/config_changed_events")
 --[[
   Main entry point for all app events.
 
@@ -18,42 +19,16 @@ function App.on_event(app, number, event, data)
     turn.logger.info("Event received: " .. event)
 
     if event == "install" then
-        -- Load manifest and update app config with manifest config
-        local manifest_json = turn.assets.load("manifest.json")
-        local manifest = turn.json.decode(manifest_json)
-        turn.logger.info("Installing from the manifest file")
-        turn.manifest.install(manifest)
+        return InstallEvents.install()
 
-        local success_config, _ = turn.app.update_config(manifest.app.config) -- Store manifest in app config for later use
-
-        -- Subscribe to contact field changes for experiment_id and assignment_arm_id
-        local contact_subscriptions = turn.app.get_contact_subscriptions()
-        table.insert(contact_subscriptions, "experiment_id")
-        table.insert(contact_subscriptions, "assignment_arm_id")
-        local success_subscriptions, _ =
-            turn.app.set_contact_subscriptions(contact_subscriptions) -- Subscribe to contact field changes
-
-        if not success_config then
-            turn.logger.error("Failed to update config")
-            return false
-        end
-
-        if not success_subscriptions then
-            turn.logger.error("Failed to set contact subscriptions")
-            return false
-        end
-
-        turn.logger.info("App installed successfully!")
-        return true
     elseif event == "uninstall" then
-        -- Clean up subscriptions
-        turn.app.set_contact_subscriptions({})
-        turn.logger.info("App uninstalled")
-        return true
+        return InstallEvents.uninstall()
+
     elseif event == "config_changed" then
         local config = turn.app.get_config()
-        turn.logger.info("Config updated: " .. turn.json.encode(config))
-        return true
+        turn.logger.info("Config updated")
+        return ConfigChangedEvents.set_experiment_config(config)
+
     elseif event == "contact_changed" then
         local contact = data.contact or data
         turn.logger.info("Contact changed: " .. contact.uuid)
@@ -63,26 +38,59 @@ function App.on_event(app, number, event, data)
         local function_name = data.function_name
         local args = data.args
 
-        if function_name == "get_assignment_for_contact" then
-            assert(#args == 2,
-                   "Expected 2 arguments for get_assignment_for_contact")
-            local contact_id, experiment_id = args[1], args[2]
+        local config = turn.app.get_config()
+        success = ConfigChangedEvents.set_experiment_config(config)
 
-            local response, err = JourneyEvents.get_assignment_for_contact(
-                                      contact_id, experiment_id)
-            if response then
-                return "continue", {assignment = response}
+        if not success then
+            local msg =
+                "Invalid experiment config, cannot process journey event"
+            turn.logger.error(msg)
+            return "error", msg
+        end
+
+        -- Look up experiment data from the global data dictionary
+        local experiment_data = turn.data.dictionary.get_global(
+                                    "evidential_experiment")
+        if not experiment_data then
+            local msg = "Experiment config not found in data dictionary"
+            turn.logger.error(msg)
+            return "error", msg
+        end
+
+        if function_name == "route_to_experiment" then
+            assert(#args >= 1, "Expected 1 argument for route_to_experiment")
+            local contact_id = args[1]
+            return JourneyEvents.route_to_journey(contact_id, experiment_data,
+                                                  data.chat_uuid)
+
+        elseif function_name == "get_assignment_for_contact" then
+            assert(#args >= 1,
+                   "Expected at least 1 arguments for get_assignment_for_contact")
+            local contact_id, update_contact_fields = args[1], args[2]
+            if update_contact_fields == nil then
+                update_contact_fields = true
+            end
+
+            local result, err = JourneyEvents.get_assignment_for_contact(
+                                    contact_id, experiment_data,
+                                    update_contact_fields)
+            if result then
+                return "continue", {
+                    assignment = result.arm_id,
+                    experiment_id = result.experiment_id,
+                    journey_uuid = result.journey_uuid
+                }
             else
                 turn.logger.error(err)
                 return "error", err
             end
 
         elseif function_name == "post_outcome_for_contact" then
-            assert(#args == 3,
-                   "Expected 3 arguments for post_outcome_for_contact")
-            local contact_id, experiment_id, outcome = args[1], args[2], args[3]
+            assert(#args == 2,
+                   "Expected 2 arguments for post_outcome_for_contact")
+            local contact_id, outcome = args[1], args[2]
             local response, err = JourneyEvents.post_outcome_for_contact(
-                                      contact_id, experiment_id, outcome)
+                                      contact_id, outcome, experiment_data)
             if response then
                 return "continue", {outcome_response = response}
             else
@@ -98,7 +106,7 @@ function App.on_event(app, number, event, data)
         local readme = turn.assets.load("README.md")
         if readme then return readme end
 
-        return "# test_app\\n\\nApp documentation goes here."
+        return "# Evidential\\n\\nApp documentation goes here."
     elseif event == "upgrade" then
         return true
     elseif event == "downgrade" then
