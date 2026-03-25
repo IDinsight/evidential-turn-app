@@ -4,7 +4,6 @@ local Functions = {}
 function Functions.route_to_journey(contact_id, experiment_data, chat_uuid)
     local result, err = Functions.get_assignment_for_contact(
         contact_id, experiment_data, true)
-    
     if not result then
         turn.logger.error(err)
         return "error", err
@@ -58,15 +57,20 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
         
         -- Check that the arm_id from the API response is one of the arms defined in the 
         -- experiment config
+        local arms = experiment_data.arms
+        if type(arms) == "string" then
+            arms = turn.json.decode(arms)
+        end
         local config_arm_ids = {}
-        for arm_key, journey_uuid in pairs(experiment_data.arms) do
+        for arm_key, journey_uuid in pairs(arms) do
             config_arm_ids[arm_key] = true
         end
         if not config_arm_ids[arm_id] then
             return nil, "Received unknown arm_id from API: " .. tostring(arm_id)
         end
 
-        local journey_uuid = experiment_data.arms[arm_id]
+        local journey_uuid = arms[arm_id]
+        
         local result =  {
             arm_id = arm_id,
             experiment_id = experiment_id,

@@ -26,7 +26,7 @@ function App.on_event(app, number, event, data)
 
     elseif event == "config_changed" then
         local config = turn.app.get_config()
-        turn.logger.info("Config updated", json.encode(config))
+        turn.logger.info("Config updated")
         return ConfigChangedEvents.set_experiment_config(config)
 
     elseif event == "contact_changed" then

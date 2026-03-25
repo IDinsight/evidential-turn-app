@@ -3,7 +3,7 @@
 		"type": "lua",
 		"name": "evidential",
 		"title": "Evidential",
-		"version": "0.2.9",
+		"version": "0.2.0",
 		"description": "Evidential app for testing integration with the Evidential experiments platform",
 		"dependencies": []
 	},
@@ -11,7 +11,7 @@
 			"evidential_api_key": "your-api-key",
 			"evidential_organization_id": "your-organization-id",
 			"evidential_api_base_url": "https://api.evidential.dev/v1/experiments",
-			"experiment_config": "{'experiment_name': 'exp_name', 'experiment_id': 'exp_12345', 'arms': {'arm_id_1': 'journey_uuid_1', 'arm_id_2': 'journey_uuid_2'}}"
+			"experiment_config": "{\"experiment_name\": \"exp_name\", \"experiment_id\": \"exp_12345\", \"arms\": {\"arm_id_1\": \"journey_uuid_1\", \"arm_id_2\": \"journey_uuid_2\"}}"
 	},
 	"contact_fields": [
 		{
