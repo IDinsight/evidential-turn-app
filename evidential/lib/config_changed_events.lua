@@ -2,7 +2,8 @@ local turn = require("turn")
 local Functions = {}
 
 function Functions.set_experiment_config(app_config)
-
+    turn.logger.info("Validating experiment config" ..
+                         turn.json.encode(app_config))
     local experiment_config_raw = app_config.experiment_config
 
     -- Validate raw config
@@ -12,10 +13,19 @@ function Functions.set_experiment_config(app_config)
     end
 
     local ok, experiment_config = pcall(turn.json.decode, experiment_config_raw)
+    if type(experiment_config.arms) == "string" then
+        experiment_config.arms = pcall(turn.json.decode, experiment_config.arms)
+    end
     if not ok then
         turn.logger.error("Invalid JSON in experiment_config: " ..
                               tostring(experiment_config))
         return false
+    end
+
+    local ok_arms, decoded_arms =
+        pcall(turn.json.decode, experiment_config.arms)
+    if ok_arms and type(decoded_arms) == "table" then
+        experiment_config.arms = decoded_arms
     end
 
     -- Validate required fields in parsed config

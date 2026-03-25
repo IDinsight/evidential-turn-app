@@ -8,9 +8,7 @@ function Functions.install()
     turn.manifest.install(manifest)
 
     -- Set default config values
-    local success_config, _ = turn.app.update_config({
-        evidential_api_base_url = "https://api.evidential.dev/v1/experiments"
-    })
+    local success_config, _ = turn.app.update_config(manifest.config)
 
     -- Subscribe to contact field changes for experiment_id and assignment_arm_id
     local contact_subscriptions = turn.app.get_contact_subscriptions()
@@ -36,6 +34,12 @@ end
 function Functions.uninstall()
     -- Clean up subscriptions and data dictionary
     turn.app.set_contact_subscriptions({})
+    experiment_data = turn.data.dictionary.get_global("evidential_experiment")
+    for _, journey_uuid in pairs(experiment_data.arms) do
+        journey, ok = turn.journeys.get(journey_uuid)
+        if ok and journey then turn.journeys.delete(journey_uuid) end
+    end
+
     turn.data.dictionary.delete_global("evidential_experiment")
     -- local journey_mapping = turn.app.get_journey_mapping()
     -- for _, journey_uuid in pairs(journey_mapping) do

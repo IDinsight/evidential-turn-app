@@ -1,4 +1,3 @@
-
 ```stack
 trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential-test")
 
@@ -46,6 +45,7 @@ end
 
 ```
 
+
 ```stack
 card GoToExperiment, "GoToExperiment",
   version: "1",
@@ -53,17 +53,6 @@ card GoToExperiment, "GoToExperiment",
   code_generator: "TEXT_MESSAGE" do
   text("Great! Let's go 🏃🏽‍♀️")
   then(RouteToExperiment)
-end
-
-```
-
-
-```stack
-ard OptOut, "OptOut",
-  version: "1",
-  uuid: "bb452839-17b8-4e1b-9340-f446d3aff295",
-  code_generator: "TEXT_MESSAGE" do
-  text("👌🏾 No problem!  We'll take you out of the experiment.")
 end
 
 ```
@@ -136,17 +125,16 @@ card SendResultsToApp, "SendResultsToApp",
   version: "1",
   uuid: "c8196fdc-27eb-4957-8d44-20a2f813d5f5",
   code_generator: "APP" do
-  ref_SendResultsToApp =
-    app("evidential", "post_outcome_for_contact", [
-      "@contact.whatsapp_id",
-      "exp_0aFAD1bF9kpUsRsE",
-      "@outcome"
-    ])
+  app("evidential", "post_outcome_for_contact", [
+    "@contact.whatsapp_id",
+    "exp_0aFAD1bF9kpUsRsE",
+    "@outcome"
+  ])
 
   then(ThankYouMessage)
-  
 end
 
+```
 
 ```stack
 card ThankYouMessage, "ThankYouMessage",
@@ -162,18 +150,28 @@ end
 
 ```
 
-
 ```stack
 card GoodbyeMessage, "GoodbyeMessage",
   version: "1",
   uuid: "6bab2aca-c07a-496a-b95a-17e1a0f33c04",
   code_generator: "TEXT_MESSAGE" do
-  text("👋  Goodbye, and thanks for participating! 
+  text("👋  Goodbye, and thanks for participating!
 
 🌻  We hope you'll consider creating similar experiments for your tool the future!
 
-👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/ 
+👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/ \
 ")
+end
+
+```
+
+
+```stack
+card OptOut, "OptOut",
+  version: "1",
+  uuid: "bb452839-17b8-4e1b-9340-f446d3aff295",
+  code_generator: "TEXT_MESSAGE" do
+  text("👌🏾 No problem!  We'll take you out of the experiment.")
 end
 
 ```

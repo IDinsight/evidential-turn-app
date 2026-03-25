@@ -26,7 +26,7 @@ function App.on_event(app, number, event, data)
 
     elseif event == "config_changed" then
         local config = turn.app.get_config()
-        turn.logger.info("Config updated")
+        turn.logger.info("Config updated", json.encode(config))
         return ConfigChangedEvents.set_experiment_config(config)
 
     elseif event == "contact_changed" then
@@ -38,6 +38,16 @@ function App.on_event(app, number, event, data)
         local function_name = data.function_name
         local args = data.args
 
+        local config = turn.app.get_config()
+        success = ConfigChangedEvents.set_experiment_config(config)
+
+        if not success then
+            local msg =
+                "Invalid experiment config, cannot process journey event"
+            turn.logger.error(msg)
+            return "error", msg
+        end
+
         -- Look up experiment data from the global data dictionary
         local experiment_data = turn.data.dictionary.get_global(
                                     "evidential_experiment")
@@ -48,7 +58,7 @@ function App.on_event(app, number, event, data)
         end
 
         if function_name == "route_to_experiment" then
-            assert(#args == 1, "Expected 1 argument for route_to_experiment")
+            assert(#args >= 1, "Expected 1 argument for route_to_experiment")
             local contact_id = args[1]
             return JourneyEvents.route_to_journey(contact_id, experiment_data,
                                                   data.chat_uuid)
