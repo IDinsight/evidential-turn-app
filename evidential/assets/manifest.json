@@ -50,9 +50,24 @@
 	"media_assets": [],
 	"journeys": [
 		{
-			"name": "Evidential Experiment",
+			"name": "Evidential Base Journey Template",
 			"description": "Routes contacts to experiment arm journeys via app-driven routing",
-			"file": "evidential_experiment.md"
+			"file": "evidential_base_template.md"
+		},
+		{
+			"name": "Evidential Arm 1 Journey Template",
+			"description": "Template for experiment arm 1 journey",
+			"file": "evidential_arm_1_template.md"
+		},
+		{
+			"name": "Evidential Arm 2 Journey Template",
+			"description": "Template for experiment arm 2 journey",
+			"file": "evidential_arm_2_template.md"
+		},
+		{
+			"name": "Evidential Arm 3 Journey Template",
+			"description": "Template for experiment arm 3 journey",
+			"file": "evidential_arm_3_template.md"
 		}
 	],
 	"templates": [],

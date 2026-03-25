@@ -1,7 +1,36 @@
 local turn = require("turn")
 local Functions = {}
 
-function Functions.get_assignment_for_contact(contact_id, experiment_data)
+function Functions.route_to_journey(contact_id, experiment_data)
+    local result, err = Functions.get_assignment_for_contact(
+        contact_id, experiment_data, true)
+    if not result then
+        turn.logger.error(err)
+        return "error", err
+    end
+
+    if not result.journey_uuid then
+        local msg = "No journey configured for arm: " .. tostring(result.arm_id)
+        turn.logger.error(msg)
+        return "error", msg
+    end
+
+    local success, start_result = turn.journeys.start(
+        data.chat_uuid, result.journey_uuid, {override = true})
+
+    if success then
+        turn.logger.info("Routed contact " .. contact_id ..
+            " to arm " .. result.arm_id ..
+            " (journey " .. result.journey_uuid .. ")")
+        return "continue", {routed = true, arm_id = result.arm_id}
+    else
+        turn.logger.error("Failed to start arm journey: " ..
+            tostring(start_result))
+        return "error", "Failed to start arm journey"
+    end
+end
+
+function Functions.get_assignment_for_contact(contact_id, experiment_data, update_contact_fields)
     local config = turn.app.get_config()
 
     local experiment_id = experiment_data.experiment_id
@@ -26,11 +55,26 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data)
         end
         local arm_id = response_body.assignment.arm_id
         local journey_uuid = experiment_data.arms[arm_id]
-        return {
+        local result =  {
             arm_id = arm_id,
             experiment_id = experiment_id,
             journey_uuid = journey_uuid
         }
+
+        if update_contact_fields then
+        -- Update contact fields with experiment assignment info for use in Stacks and other journey contexts
+            local contact, found = turn.contacts.find({msisdn = contact_id})
+            if found then
+                turn.contacts.update_contact_details(contact, {
+                    assignment_arm_id = result.arm_id,
+                    experiment_id = result.experiment_id
+                })
+            else
+                turn.logger.warning("Contact not found for msisdn: " .. contact_id ..
+                    ", skipping profile update")
+            end
+            return result
+        end
     else
         return nil, "Failed to get assignment: " .. (body or "unknown error")
     end

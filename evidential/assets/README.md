@@ -2,6 +2,17 @@
 
 An app to integrate with the [Evidential experiments platform](https://app.evidential.dev/) and run experiments on Turn.io.
 
+
+## Quickstart
+1. Create an experiment on the [Evidential experiments platform](https://app.evidential.dev/) and note down the organization ID, API key, experiment ID and arm IDs for this experiment from the integration guide.
+2. Create a new Turn.io app and add the `evidential` app as a dependency.
+3. Configure the app with the required parameters (see [Configuration](#configuration) section).
+4. Create a base Journey to onboard contacts for your experiment, and add a block calling the `route_to_experiment` function from the App (see [Journey Functions](#journey-functions) section).
+5. Create separate Journeys for each arm of the experiment, following the [Arm Journey Contract](#arm-journey-contract), and update the corresponding arm IDs to journey UUIDs in the app config.
+5. If you're running a bandit experiment and want to collect outcomes in the arm journeys, make sure to call the `post_outcome_for_contact` function from the App with the appropriate outcome value to record the outcome in Evidential for analysis. (See [Journey Functions](#journey-functions) section for details on how to use this function in your journey.)
+6. Publish the app and the journeys, and start onboarding contacts to see them routed to their assigned arm journeys based on the experiment configuration in Evidential.
+
+
 ## Configuration
 
 The app requires the following configuration parameters (set in Turn.io UI):
@@ -41,15 +52,15 @@ app("evidential", "route_to_experiment", ["@contact.whatsapp_id"])
 ```
 
 
-### get_assignment_for_contact(contact_id)
+### get_assignment_for_contact(contact_id, update_contact_fields)
 
-Returns the contact's arm assignment without routing. For custom journeys that want to handle routing themselves.
+Returns the contact's arm assignment without routing, and optionally updates the contact's profile fields (by default, `update_contact_fields` is `true`). For custom journeys that want to handle routing themselves.
 
 **Returns on success:** `{assignment = "arm_id", experiment_id = "exp_id", journey_uuid = "uuid"}`
 
 **Usage in Journey:**
 ```
-app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id"])
+app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id", true])
 ```
 
 ### post_outcome_for_contact(contact_id, outcome)
