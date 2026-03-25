@@ -50,7 +50,8 @@ function App.on_event(app, number, event, data)
         if function_name == "route_to_experiment" then
             assert(#args == 1, "Expected 1 argument for route_to_experiment")
             local contact_id = args[1]
-            return JourneyEvents.route_to_journey(contact_id, experiment_data)
+            return JourneyEvents.route_to_journey(contact_id, experiment_data,
+                                                  data.chat_uuid)
 
         elseif function_name == "get_assignment_for_contact" then
             assert(#args >= 1,

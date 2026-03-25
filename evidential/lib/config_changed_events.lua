@@ -38,9 +38,13 @@ function Functions.set_experiment_config(app_config)
     end
 
     journey_mapping = turn.app.get_journey_mapping()
+    journey_uuids = {}
+    for _, journey_uuid in pairs(journey_mapping) do
+        journey_uuids[journey_uuid] = true
+    end
     for arm_id, journey_uuid in pairs(experiment_config.arms) do
         arm_id = tostring(arm_id)
-        if not table.contains(journey_mapping, journey_uuid) then
+        if not journey_uuids[journey_uuid] then
             turn.logger.error(
                 "Invalid journey UUID for arm " .. arm_id .. ": " ..
                     tostring(journey_uuid))

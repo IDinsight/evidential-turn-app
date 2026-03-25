@@ -1,9 +1,10 @@
 local turn = require("turn")
 local Functions = {}
 
-function Functions.route_to_journey(contact_id, experiment_data)
+function Functions.route_to_journey(contact_id, experiment_data, chat_uuid)
     local result, err = Functions.get_assignment_for_contact(
         contact_id, experiment_data, true)
+    
     if not result then
         turn.logger.error(err)
         return "error", err
@@ -16,7 +17,7 @@ function Functions.route_to_journey(contact_id, experiment_data)
     end
 
     local success, start_result = turn.journeys.start(
-        data.chat_uuid, result.journey_uuid, {override = true})
+        chat_uuid, result.journey_uuid, {override = true})
 
     if success then
         turn.logger.info("Routed contact " .. contact_id ..
@@ -54,6 +55,17 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
             return nil, "Invalid response: missing assignment data"
         end
         local arm_id = response_body.assignment.arm_id
+        
+        -- Check that the arm_id from the API response is one of the arms defined in the 
+        -- experiment config
+        local config_arm_ids = {}
+        for arm_key, journey_uuid in pairs(experiment_data.arms) do
+            config_arm_ids[arm_key] = true
+        end
+        if not config_arm_ids[arm_id] then
+            return nil, "Received unknown arm_id from API: " .. tostring(arm_id)
+        end
+
         local journey_uuid = experiment_data.arms[arm_id]
         local result =  {
             arm_id = arm_id,
@@ -73,8 +85,8 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
                 turn.logger.warning("Contact not found for msisdn: " .. contact_id ..
                     ", skipping profile update")
             end
-            return result
         end
+        return result
     else
         return nil, "Failed to get assignment: " .. (body or "unknown error")
     end
