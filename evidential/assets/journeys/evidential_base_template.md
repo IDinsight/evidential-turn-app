@@ -69,6 +69,7 @@ card RouteToExperiment, "RouteToExperiment",
     ])
 
   then(ErrorMessage when ref_RouteToExperiment.success == false)
+  then(PresentOptions when ref_RouteToExperiment.success == true)
 end
 
 ```
