@@ -3,7 +3,10 @@
 
 IMAGE := ghcr.io/turnhub/turn-lua-sdk:latest
 
-.PHONY: help test watch build clean
+.PHONY: help test watch build clean push push-watch pull promote rollback versions
+
+TARGET ?= staging
+BUMP ?= --patch
 
 help: ## Show this help message
 	@echo "test_app - Turn.io Lua App"
@@ -24,3 +27,30 @@ clean: ## Remove built ZIP files
 
 shell: ## Open shell in container
 	@docker run --rm -it -v $$(pwd):/workspace $(IMAGE) /bin/sh
+
+target-add: ## Add a remote target (NAME=staging URL=https://...)
+	@docker run --rm -v $$(pwd):/workspace $(IMAGE) turn-app target add $(NAME) $(URL)
+
+target-list: ## List configured targets
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app target list
+
+target-remove: ## Remove a remote target (NAME=staging)
+	@docker run --rm -v $$(pwd):/workspace $(IMAGE) turn-app target remove $(NAME)
+
+push: ## Push app files to remote target
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app push $(TARGET)
+
+push-watch: ## Watch mode - auto-push on file changes
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app push-watch $(TARGET)
+
+pull: ## Pull journey files from remote target
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app pull $(TARGET)
+
+promote: ## Promote dev version to release
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app promote $(TARGET) $(BUMP)
+
+rollback: ## Rollback to a previous version
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app rollback $(TARGET) --version $(VERSION)
+
+versions: ## List all versions on remote target
+	@docker run --rm -v $$(pwd):/workspace -e TURN_APP_TOKEN $(IMAGE) turn-app versions $(TARGET)
