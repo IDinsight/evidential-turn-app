@@ -13,6 +13,7 @@ describe("evidential", function()
         turn.test.reset()
 
         app_config = {
+            enabled = true,
             uuid = "evidential-app-uuid",
             config = {
                 evidential_api_key = "your-api-key",
@@ -100,15 +101,19 @@ describe("evidential", function()
     describe("config_changed event", function()
         it("should handle config changes and update data dictionary", function()
             local new_config = {
-                evidential_api_key = "new-api-key",
-                evidential_organization_id = "new-organization-id",
-                evidential_api_base_url = "new-base-url",
-                experiment_config = json.encode({
-                    experiment_id = 'experiment_456',
-                    arms = {arm_1 = 'journey-1', arm_2 = 'journey-2'}
-                })
+                uuid = app_config.uuid,
+                config = {
+                    evidential_api_key = "new-api-key",
+                    evidential_organization_id = "new-organization-id",
+                    evidential_api_base_url = "new-base-url",
+                    experiment_config = json.encode({
+                        experiment_id = 'experiment_456',
+                        arms = {arm_1 = 'journey-1', arm_2 = 'journey-2'}
+                    })
+                }
             }
-            turn.app.update_config(new_config) -- Ensure config is updated before triggering event
+
+            turn.app.update_config(new_config.config) -- Ensure config is updated before triggering event
             local result =
                 App.on_event(new_config, number, "config_changed", {})
             assert(result == true, "Expected config_changed to return true")
@@ -131,6 +136,61 @@ describe("evidential", function()
                    "Expected arm_1 to match config")
             assert(experiment_data.arms.arm_2 == "journey-2",
                    "Expected arm_2 to match config")
+
+            -- assert that the logged config object shows only the redacted API key
+            local info = turn.test.get_log_messages("info")
+            assert(#info > 0, "Expected at least one info log entry: " .. turn.json.encode(info))
+            local found = false
+            for _, entry in ipairs(info) do
+                if entry.message:match("evidential_api_key.*new%-api%-%*%*%*%*") then
+                    found = true
+                    break
+                end
+            end
+            assert(found, "Expected **** in info log for evidential_api_key: " .. turn.json.encode(info))
+
+        end)
+
+        it("should handle newlines in experiment_config", function()
+            local new_config = {
+                uuid = app_config.uuid,
+                config = {
+                    evidential_api_key = "new-api-key",
+                    evidential_organization_id = "new-organization-id",
+                    evidential_api_base_url = "new-base-url",
+                    experiment_config = "\n{\"experiment_name\": \"name\\n2nd line\", " ..
+                        "\n\"experiment_id\": \"exp_id1\"," ..
+                        " \n \"arms\": {\"arm_1\": \"journey-1\", " ..
+                        "\n\n \"arm_2\": \"journey-2\"}} \n "
+                }
+            }
+
+            turn.app.update_config(new_config.config)
+            local result = App.on_event(new_config, number, "config_changed", {})
+            assert(result == true, "Expected config_changed to return true")
+
+            local config = turn.app.get_config()
+            assert(config.evidential_api_key == "new-api-key",
+                   "Expected API key to be updated in config")
+        end)
+
+        it("should NOT handle literal newlines in experiment_config string value", function()
+            local new_config = {
+                uuid = app_config.uuid,
+                config = {
+                    evidential_api_key = "new-api-key",
+                    evidential_organization_id = "new-organization-id",
+                    evidential_api_base_url = "new-base-url",
+                    experiment_config = "{\"experiment_name\": \"name\n2nd line\", " ..
+                        "\"experiment_id\": \"exp_id1\"," ..
+                        " \"arms\": {\"arm_1\": \"journey-1\", " ..
+                        "\"arm_2\": \"journey-2\"}}"
+                }
+            }
+
+            turn.app.update_config(new_config.config)
+            local result = App.on_event(new_config, number, "config_changed", {})
+            assert(result == false, "Expected config_changed to fail")
         end)
 
         it("should return false when experiment_config is missing", function()

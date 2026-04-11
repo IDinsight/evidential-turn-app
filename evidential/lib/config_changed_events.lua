@@ -1,9 +1,22 @@
 local turn = require("turn")
 local Functions = {}
 
+--[[ Returns a redacted copy of the config so it can be used for logging. ]]
+function Functions.redact_config_secrets(app_config)
+    local logsafe = {}
+    for k, v in pairs(app_config) do
+        logsafe[k] = v
+    end
+    if logsafe.evidential_api_key then
+        local key = tostring(logsafe.evidential_api_key)
+        local shadow = string.sub(key, 1, 8) .. "****"
+        logsafe.evidential_api_key = shadow
+    end
+    return logsafe
+end
+
+--[[ Validates the app's config and sets the experiment config in the data dictionary. ]]
 function Functions.set_experiment_config(app_config)
-    turn.logger.info("Validating experiment config" ..
-                         turn.json.encode(app_config))
     local experiment_config_raw = app_config.experiment_config
 
     -- Validate raw config
@@ -71,9 +84,10 @@ function Functions.set_experiment_config(app_config)
         arms = experiment_config.arms
     }, {replace = true})
 
-    turn.logger.info("Config validated: experiment=" ..
-                         experiment_config.experiment_id .. ", arms=" ..
-                         turn.json.encode(experiment_config.arms))
+    turn.logger.info(
+        "Config validated: experiment=" .. experiment_config.experiment_id ..
+        ", arms=" .. turn.json.encode(experiment_config.arms)
+    )
     return true
 end
 
