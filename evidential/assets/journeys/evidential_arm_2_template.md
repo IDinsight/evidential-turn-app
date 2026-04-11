@@ -1,8 +1,11 @@
+<!-- { section: "8ed238a3-db24-4500-b088-a6701ce986d2", x: -504, y: 312} -->
+
 ```stack
 trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential-arm-2")
 
 ```
 
+<!-- { section: "cc7cab71-b872-4efa-8155-e0c93af410cd", x: -168, y: 312} -->
 
 ```stack
 card Arm_2, "Arm_2",
@@ -17,10 +20,13 @@ card Arm_2, "Arm_2",
 
 👩🏾‍💼 And remember to keep doing this during office hours -- otherwise you might end up with chronic neck pain! "
   )
-then(PresentOptions)
+
+  then(PresentOptions)
 end
 
 ```
+
+<!-- { section: "37b5960e-9e70-4edf-814f-22b314403dcd", x: 192, y: 312} -->
 
 ```stack
 card PresentOptions, "PresentOptions",
@@ -37,6 +43,7 @@ end
 
 ```
 
+<!-- { section: "2e80e81c-3ec1-4006-b8c8-e732fe25085b", x: 552, y: 336} -->
 
 ```stack
 card RecordOutcome, "RecordOutcome",
@@ -56,21 +63,22 @@ end
 
 ```
 
+<!-- { section: "6d974758-1dcb-4cb9-ab64-6ceb02751dfd", x: 888, y: 336} -->
 
 ```stack
 card SendResultsToApp, "SendResultsToApp",
   version: "1",
   uuid: "c8196fdc-27eb-4957-8d44-20a2f813d5f5",
   code_generator: "APP" do
-  app("evidential", "post_outcome_for_contact", [
-    "@contact.whatsapp_id",
-    "@outcome"
-  ])
+  ref_SendResultsToApp =
+    app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "@outcome"])
 
   then(ThankYouMessage)
 end
 
 ```
+
+<!-- { section: "22a86507-f345-48c7-a52b-8f133531fc25", x: 1224, y: 336} -->
 
 ```stack
 card ThankYouMessage, "ThankYouMessage",
@@ -86,6 +94,8 @@ end
 
 ```
 
+<!-- { section: "4737ac44-f666-450c-9f83-86189abf24c1", x: 1560, y: 336} -->
+
 ```stack
 card GoodbyeMessage, "GoodbyeMessage",
   version: "1",
@@ -95,8 +105,15 @@ card GoodbyeMessage, "GoodbyeMessage",
 
 🌻  We hope you'll consider creating similar experiments for your tool the future!
 
-👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/ \
+👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/
 ")
 end
+
+```
+
+<!-- { section: "INTERACTION_TIMEOUT_CELL", x: 0, y: 0} -->
+
+```stack
+interaction_timeout(300)
 
 ```
