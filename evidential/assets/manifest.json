@@ -1,55 +1,55 @@
 {
-	"app": {
-		"type": "lua",
-		"name": "evidential",
-		"title": "Evidential",
-		"version": "0.2.0",
-		"description": "Evidential app for testing integration with the Evidential experiments platform",
-		"dependencies": []
-	},
-	"config": {
-			"evidential_api_key": "your-api-key",
-			"evidential_organization_id": "your-organization-id",
-			"evidential_api_base_url": "https://api.evidential.dev/v1/experiments",
-			"experiment_config": "{\"experiment_name\": \"exp_name\", \"experiment_id\": \"exp_12345\", \"arms\": {\"arm_id_1\": \"journey_uuid_1\", \"arm_id_2\": \"journey_uuid_2\"}}"
-	},
-	"contact_fields": [
-		{
-			"type": "STRING",
-			"name": "experiment_id",
-			"display": "Experiment ID",
-			"private": false
-		},
-		{
-			"type": "STRING",
-			"name": "assignment_arm_id",
-			"display": "Assignment Arm ID",
-			"private": false
-		}
-	],
-	"media_assets": [],
-	"journeys": [
-		{
-			"name": "Evidential Base Journey Template",
-			"description": "Routes contacts to experiment arm journeys via app-driven routing",
-			"file": "evidential_base_template.md"
-		},
-		{
-			"name": "Evidential Arm 1 Journey Template",
-			"description": "Template for experiment arm 1 journey",
-			"file": "evidential_arm_1_template.md"
-		},
-		{
-			"name": "Evidential Arm 2 Journey Template",
-			"description": "Template for experiment arm 2 journey",
-			"file": "evidential_arm_2_template.md"
-		},
-		{
-			"name": "Evidential Arm 3 Journey Template",
-			"description": "Template for experiment arm 3 journey",
-			"file": "evidential_arm_3_template.md"
-		}
-	],
-	"templates": [],
-	"flows": []
+  "app": {
+    "dependencies": [],
+    "description": "Evidential app for testing integration with the Evidential experiments platform",
+    "name": "evidential",
+    "title": "Evidential",
+    "type": "lua",
+    "version": "0.2.3"
+  },
+  "config": {
+    "evidential_api_base_url": "https://api.evidential.dev/v1/experiments",
+    "evidential_api_key": "your-api-key",
+    "evidential_organization_id": "not-needed",
+    "experiment_config": "{\"experiment_name\": \"exp_name\", \"experiment_id\": \"exp_12345\", \"arms\": {\"arm_id_1\": \"journey_uuid_1\", \"arm_id_2\": \"journey_uuid_2\"}}"
+  },
+  "contact_fields": [
+    {
+      "display": "Experiment ID",
+      "name": "experiment_id",
+      "private": false,
+      "type": "STRING"
+    },
+    {
+      "display": "Assignment Arm ID",
+      "name": "assignment_arm_id",
+      "private": false,
+      "type": "STRING"
+    }
+  ],
+  "flows": [],
+  "journeys": [
+    {
+      "description": "Routes contacts to experiment arm journeys via app-driven routing",
+      "file": "evidential_base_template.md",
+      "name": "Evidential Base Journey Template"
+    },
+    {
+      "description": "Template for experiment arm 1 journey",
+      "file": "evidential_arm_1_template.md",
+      "name": "Evidential Arm 1 Journey Template"
+    },
+    {
+      "description": "Template for experiment arm 2 journey",
+      "file": "evidential_arm_2_template.md",
+      "name": "Evidential Arm 2 Journey Template"
+    },
+    {
+      "description": "Template for experiment arm 3 journey",
+      "file": "evidential_arm_3_template.md",
+      "name": "Evidential Arm 3 Journey Template"
+    }
+  ],
+  "media_assets": [],
+  "templates": []
 }

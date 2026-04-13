@@ -1,8 +1,11 @@
+<!-- { section: "", x: -264, y: 288} -->
+
 ```stack
 trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential-test")
 
 ```
 
+<!-- { section: "", x: 72, y: 288} -->
 
 ```stack
 card Greeting, "Greeting",
@@ -26,6 +29,7 @@ end
 
 ```
 
+<!-- { section: "", x: 408, y: 288} -->
 
 ```stack
 card Consent, "Consent",
@@ -45,6 +49,7 @@ end
 
 ```
 
+<!-- { section: "", x: 768, y: 360} -->
 
 ```stack
 card GoToExperiment, "GoToExperiment",
@@ -57,22 +62,20 @@ end
 
 ```
 
+<!-- { section: "", x: 1128, y: 360} -->
 
 ```stack
 card RouteToExperiment, "RouteToExperiment",
   version: "1",
   uuid: "3fbb9478-641e-4339-84cf-d08aebd29d08",
   code_generator: "APP" do
-  ref_RouteToExperiment =
-    app("evidential", "route_to_experiment", [
-      "@contact.whatsapp_id"
-    ])
-
+  ref_RouteToExperiment = app("evidential", "route_to_experiment", ["@contact.whatsapp_id"])
   then(ErrorMessage when ref_RouteToExperiment.success == false)
 end
 
 ```
 
+<!-- { section: "", x: 1152, y: 864} -->
 
 ```stack
 card ErrorMessage, "ErrorMessage",
@@ -84,6 +87,7 @@ end
 
 ```
 
+<!-- { section: "", x: 768, y: 624} -->
 
 ```stack
 card OptOut, "OptOut",
@@ -92,11 +96,5 @@ card OptOut, "OptOut",
   code_generator: "TEXT_MESSAGE" do
   text("👌🏾 No problem!  We'll take you out of the experiment.")
 end
-
-```
-
-
-```stack
-interaction_timeout(300)
 
 ```

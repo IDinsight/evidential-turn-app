@@ -1,8 +1,11 @@
+<!-- { section: "", x: -216, y: 288} -->
+
 ```stack
-trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential--arm-3")
+trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential--arm-1")
 
 ```
 
+<!-- { section: "", x: 120, y: 288} -->
 
 ```stack
 card Arm_1, "Arm_1",
@@ -18,10 +21,12 @@ card Arm_1, "Arm_1",
 🚶🏾‍♀️‍➡️ Roll your neck, pull shoulders back, and ensure feet are flat on the floor.
 
 ")
-then(PresentOptions)
+  then(PresentOptions)
 end
 
 ```
+
+<!-- { section: "", x: 456, y: 288} -->
 
 ```stack
 card PresentOptions, "PresentOptions",
@@ -38,6 +43,7 @@ end
 
 ```
 
+<!-- { section: "", x: 816, y: 432} -->
 
 ```stack
 card RecordOutcome, "RecordOutcome",
@@ -57,21 +63,22 @@ end
 
 ```
 
+<!-- { section: "", x: 432, y: 720} -->
 
 ```stack
 card SendResultsToApp, "SendResultsToApp",
   version: "1",
   uuid: "c8196fdc-27eb-4957-8d44-20a2f813d5f5",
   code_generator: "APP" do
-  app("evidential", "post_outcome_for_contact", [
-    "@contact.whatsapp_id",
-    "@outcome"
-  ])
+  ref_SendResultsToApp =
+    app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "@outcome"])
 
   then(ThankYouMessage)
 end
 
 ```
+
+<!-- { section: "", x: 768, y: 720} -->
 
 ```stack
 card ThankYouMessage, "ThankYouMessage",
@@ -87,6 +94,8 @@ end
 
 ```
 
+<!-- { section: "", x: 1128, y: 720} -->
+
 ```stack
 card GoodbyeMessage, "GoodbyeMessage",
   version: "1",
@@ -96,7 +105,7 @@ card GoodbyeMessage, "GoodbyeMessage",
 
 🌻  We hope you'll consider creating similar experiments for your tool the future!
 
-👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/ \
+👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/
 ")
 end
 

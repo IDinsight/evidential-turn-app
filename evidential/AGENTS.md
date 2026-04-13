@@ -1,6 +1,6 @@
 # AGENTS.md - Turn.io Lua App Development Guide for AI Agents
 
-This file provides context and instructions for AI coding agents working on test_app.
+This file provides context and instructions for AI coding agents working on myapp.
 
 ## Project Overview
 
@@ -180,13 +180,16 @@ end
 ```lua
 if event == "http_request" then
   -- data.method = "GET" | "POST" | "PUT" | "DELETE"
+  -- data.request_path = full request path string
   -- data.path_info = array of path segments
-  -- data.query = table of query params
-  -- data.body = request body string
-  -- data.headers = table of headers
+  -- data.query_string = raw query string
+  -- data.query_params = table of parsed query params
+  -- data.body_params = table of parsed body params
+  -- data.params = table of merged query + body params
+  -- data.req_headers = table of request headers
 
   if data.method == "POST" and data.path_info[1] == "webhook" then
-    local payload = turn.json.decode(data.body)
+    local payload = data.body_params
     -- Process webhook
     return true, {
       status = 200,
@@ -399,7 +402,7 @@ end
 
 -- Later, when webhook arrives...
 if event == "http_request" and data.path_info[1] == "webhook" then
-  local webhook_data = json.decode(data.body)
+  local webhook_data = data.body_params
   local chat_uuid = webhook_data.metadata.chat_uuid
 
   -- Resume journey with payment result
@@ -595,10 +598,10 @@ local describe, it, before, after = lester.describe, lester.it, lester.before, l
 local turn = require("turn")
 local json = turn.json
 
-local app = require("test_app")
+local app = require("myapp")
 local number = { uuid = "test-number-uuid" }
 
-describe("test_app", function()
+describe("myapp", function()
   before(function()
     turn.test.reset()  -- ALWAYS reset state before each test
   end)
@@ -627,7 +630,7 @@ return lester.report()
 Production apps use a consistent three-level structure:
 
 ```lua
-describe("test_app", function()
+describe("myapp", function()
   local app_config, number
 
   before(function()
@@ -780,18 +783,18 @@ end)
 For complex apps with multiple modules, clear package.loaded in after() hook:
 
 ```lua
-describe("test_app", function()
+describe("myapp", function()
   after(function()
     turn.test.reset()
     -- Clear all loaded modules to ensure fresh state
-    package.loaded["test_app"] = nil
-    package.loaded["test_app.utils"] = nil
-    package.loaded["test_app.handlers"] = nil
+    package.loaded["myapp"] = nil
+    package.loaded["myapp.utils"] = nil
+    package.loaded["myapp.handlers"] = nil
   end)
 
   it("should load modules with fresh state", function()
     -- Module will be reloaded from scratch
-    local app = require("test_app")
+    local app = require("myapp")
     -- Test with clean module state
   end)
 end)
@@ -892,11 +895,11 @@ end)
 ## File Structure
 
 ```
-test_app/
-├── test_app.lua          # Main entry point (required)
+myapp/
+├── myapp.lua          # Main entry point (required)
 ├── manifest.json               # App metadata (required)
 ├── spec/
-│   └── test_app_spec.lua # Tests (required)
+│   └── myapp_spec.lua # Tests (required)
 ├── assets/
 │   ├── README.md               # User-facing docs (shown in Turn.io UI)
 │   └── [other assets]          # Images, journey files, etc.
@@ -915,11 +918,36 @@ The `manifest.json` file is **required** and defines app metadata:
 {
   "app": {
     "type": "lua",
-    "name": "test_app",
+    "name": "myapp",
     "title": "Human Readable Name",
     "version": "0.1.0",
     "description": "What this app does",
-    "dependencies": []
+    "dependencies": [],
+    "functions": [
+      {
+        "name": "hello",
+        "title": "Say Hello",
+        "description": "Returns a greeting message",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name to greet",
+              "placeholder": "e.g. World",
+              "label": "Name"
+            }
+          },
+          "required": ["name"]
+        },
+        "returns": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string", "description": "The greeting message" }
+          }
+        }
+      }
+    ]
   },
   "contact_fields": [
     {
@@ -949,12 +977,15 @@ The `manifest.json` file is **required** and defines app metadata:
 
 **Field Types:** `STRING`, `BOOLEAN`, `NUMBER`, `DATE`
 
+**Function introspection:** Functions declared in `app.functions` describe your app's journey event handlers for the canvas UI. Each function specifies parameters (JSON Schema with label/placeholder), return fields, and branches (with `$RESULT` expressions). When `turn.manifest.install()` runs, function metadata is persisted to the database and served via GraphQL to the canvas, enabling typed parameter inputs and custom branch labels.
+
 **When modifying manifest.json:**
 - Increment `version` following semver
 - Update `description` to reflect new functionality
 - Add contact_fields if app creates custom contact data
 - Add journeys if bundling conversation flows
 - Add media_assets for images/documents used by app
+- Add `app.functions` entries when adding journey event handlers (enables canvas UI introspection)
 
 ## Security Considerations
 
