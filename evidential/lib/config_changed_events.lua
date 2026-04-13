@@ -61,7 +61,8 @@ function Functions.set_experiment_config(app_config)
         if not journey_uuids[journey_uuid] then
             turn.logger.error(
                 "Invalid journey UUID for arm " .. arm_id .. ": " ..
-                    tostring(journey_uuid))
+                    tostring(journey_uuid) ..
+                    " current mapping: " .. turn.json.encode(journey_mapping))
             return false
         end
     end

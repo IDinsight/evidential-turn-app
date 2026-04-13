@@ -45,7 +45,7 @@ function App.on_event(app, number, event, data)
 
         if not success then
             local logged_config = ConfigChangedEvents.redact_config_secrets(config)
-            local msg = "Invalid experiment config (check the json format). Cannot process journey event."
+            local msg = "Invalid experiment config (check the json format and uuids). Cannot process journey event."
             turn.logger.error(msg .. ": " .. turn.json.encode(logged_config))
             return "error", msg
         end
