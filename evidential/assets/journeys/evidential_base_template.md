@@ -1,11 +1,11 @@
-<!-- { section: "ae73d38a-5a1f-4f90-bfb9-ac68462774fd", x: -264, y: 288} -->
+<!-- { section: "", x: -264, y: 288} -->
 
 ```stack
 trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential-test")
 
 ```
 
-<!-- { section: "e8f717cf-b80d-4d3c-aca1-c1b6654028d8", x: 72, y: 288} -->
+<!-- { section: "", x: 72, y: 288} -->
 
 ```stack
 card Greeting, "Greeting",
@@ -29,7 +29,7 @@ end
 
 ```
 
-<!-- { section: "55a6af8a-dbfd-4a18-8df9-8f7b13811c2c", x: 408, y: 288} -->
+<!-- { section: "", x: 408, y: 288} -->
 
 ```stack
 card Consent, "Consent",
@@ -49,7 +49,7 @@ end
 
 ```
 
-<!-- { section: "6d6af2c1-4563-4861-9f1e-2b5f491fb59c", x: 768, y: 360} -->
+<!-- { section: "", x: 768, y: 360} -->
 
 ```stack
 card GoToExperiment, "GoToExperiment",
@@ -62,7 +62,7 @@ end
 
 ```
 
-<!-- { section: "e5620a77-ebfe-41be-9910-31d2b726fa61", x: 1128, y: 360} -->
+<!-- { section: "", x: 1128, y: 360} -->
 
 ```stack
 card RouteToExperiment, "RouteToExperiment",
@@ -75,7 +75,7 @@ end
 
 ```
 
-<!-- { section: "8351e85c-1e38-4653-829d-687c6fee5473", x: 1152, y: 864} -->
+<!-- { section: "", x: 1152, y: 864} -->
 
 ```stack
 card ErrorMessage, "ErrorMessage",
@@ -87,7 +87,7 @@ end
 
 ```
 
-<!-- { section: "1d06326b-0125-4990-9da9-541c54d00638", x: 768, y: 624} -->
+<!-- { section: "", x: 768, y: 624} -->
 
 ```stack
 card OptOut, "OptOut",
@@ -96,19 +96,5 @@ card OptOut, "OptOut",
   code_generator: "TEXT_MESSAGE" do
   text("👌🏾 No problem!  We'll take you out of the experiment.")
 end
-
-```
-
-<!-- { section: "50e49dc7-a25d-47ab-8f68-5e053ef32618", x: 504, y: 816} -->
-
-```stack
-interaction_timeout(300)
-
-```
-
-<!-- { section: "INTERACTION_TIMEOUT_CELL", x: 0, y: 0} -->
-
-```stack
-interaction_timeout(300)
 
 ```

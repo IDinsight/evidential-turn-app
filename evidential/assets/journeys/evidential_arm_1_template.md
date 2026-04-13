@@ -1,11 +1,11 @@
-<!-- { section: "859ae7e1-207a-4ab5-9ba2-76be1705711d", x: -216, y: 288} -->
+<!-- { section: "", x: -216, y: 288} -->
 
 ```stack
 trigger(on: "MESSAGE RECEIVED") when has_only_phrase(event.message.text.body, "evidential--arm-1")
 
 ```
 
-<!-- { section: "498dac50-34d9-4cac-8b11-088578d160ab", x: 120, y: 288} -->
+<!-- { section: "", x: 120, y: 288} -->
 
 ```stack
 card Arm_1, "Arm_1",
@@ -26,7 +26,7 @@ end
 
 ```
 
-<!-- { section: "77b0e492-615d-4952-bb41-e45287c68e71", x: 456, y: 288} -->
+<!-- { section: "", x: 456, y: 288} -->
 
 ```stack
 card PresentOptions, "PresentOptions",
@@ -43,7 +43,7 @@ end
 
 ```
 
-<!-- { section: "08af9953-4293-4bbc-8534-4ad27689bf10", x: 816, y: 432} -->
+<!-- { section: "", x: 816, y: 432} -->
 
 ```stack
 card RecordOutcome, "RecordOutcome",
@@ -63,7 +63,7 @@ end
 
 ```
 
-<!-- { section: "0640f843-f65e-48d8-8ce9-99bf75886119", x: 432, y: 720} -->
+<!-- { section: "", x: 432, y: 720} -->
 
 ```stack
 card SendResultsToApp, "SendResultsToApp",
@@ -78,7 +78,7 @@ end
 
 ```
 
-<!-- { section: "92550cb2-8895-4745-abd1-0138dcae3d6f", x: 768, y: 720} -->
+<!-- { section: "", x: 768, y: 720} -->
 
 ```stack
 card ThankYouMessage, "ThankYouMessage",
@@ -94,7 +94,7 @@ end
 
 ```
 
-<!-- { section: "9ed9e4c6-ed98-4045-aac8-7cd0b3864115", x: 1128, y: 720} -->
+<!-- { section: "", x: 1128, y: 720} -->
 
 ```stack
 card GoodbyeMessage, "GoodbyeMessage",
@@ -108,12 +108,5 @@ card GoodbyeMessage, "GoodbyeMessage",
 👀  In the meantime, you can learn more about Evidential here:  https://docs.evidential.dev/
 ")
 end
-
-```
-
-<!-- { section: "INTERACTION_TIMEOUT_CELL", x: 0, y: 0} -->
-
-```stack
-interaction_timeout(300)
 
 ```
