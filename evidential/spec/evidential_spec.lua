@@ -19,8 +19,6 @@ describe("evidential", function()
             uuid = "evidential-app-uuid",
             config = {
                 evidential_api_key = "your-api-key",
-                evidential_organization_id = "your-organization-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
                 experiment_config = json.encode({
                     experiment_id = 'experiment_123',
                     arms = {arm_a = 'journey-1', arm_b = 'journey-2'}
@@ -80,10 +78,7 @@ describe("evidential", function()
             -- Verify app config was updated with manifest
 
             local config = turn.app.get_config()
-            local required_fields = {
-                "evidential_api_key", "evidential_organization_id",
-                "evidential_api_base_url"
-            }
+            local required_fields = {"evidential_api_key"}
             for _, field in ipairs(required_fields) do
                 assert(config[field] ~= nil,
                        "Expected config to include " .. field)
@@ -111,8 +106,6 @@ describe("evidential", function()
                 uuid = app_config.uuid,
                 config = {
                     evidential_api_key = "new-api-key",
-                    evidential_organization_id = "new-organization-id",
-                    evidential_api_base_url = "new-base-url",
                     experiment_config = json.encode({
                         experiment_id = 'experiment_456',
                         arms = {arm_1 = 'journey-1', arm_2 = 'journey-2'}
@@ -128,10 +121,6 @@ describe("evidential", function()
             local config = turn.app.get_config()
             assert(config.evidential_api_key == "new-api-key",
                    "Expected API key to be updated in config")
-            assert(config.evidential_organization_id == "new-organization-id",
-                   "Expected organization ID to be updated in config")
-            assert(config.evidential_api_base_url == "new-base-url",
-                   "Expected API base URL to be updated in config")
 
             local experiment_data = turn.data.dictionary.get_global(
                                         "evidential_experiment")
@@ -166,8 +155,6 @@ describe("evidential", function()
                 uuid = app_config.uuid,
                 config = {
                     evidential_api_key = "new-api-key",
-                    evidential_organization_id = "new-organization-id",
-                    evidential_api_base_url = "new-base-url",
                     experiment_config = "\n{\"experiment_name\": \"name\\n2nd line\", " ..
                         "\n\"experiment_id\": \"exp_id1\"," ..
                         " \n \"arms\": {\"arm_1\": \"journey-1\", " ..
@@ -192,8 +179,6 @@ describe("evidential", function()
                     uuid = app_config.uuid,
                     config = {
                         evidential_api_key = "new-api-key",
-                        evidential_organization_id = "new-organization-id",
-                        evidential_api_base_url = "new-base-url",
                         experiment_config = "{\"experiment_name\": \"name\n2nd line\", " ..
                             "\"experiment_id\": \"exp_id1\"," ..
                             " \"arms\": {\"arm_1\": \"journey-1\", " ..
@@ -208,11 +193,7 @@ describe("evidential", function()
             end)
 
         it("should return false when experiment_config is missing", function()
-            turn.app.set_config({
-                evidential_api_key = "test-api-key",
-                evidential_organization_id = "test-org-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments"
-            })
+            turn.app.set_config({evidential_api_key = "test-api-key"})
             local result =
                 App.on_event(app_config, number, "config_changed", {})
             assert(result == false,
@@ -223,8 +204,6 @@ describe("evidential", function()
            function()
             turn.app.set_config({
                 evidential_api_key = "test-api-key",
-                evidential_organization_id = "test-org-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
                 experiment_config = "not valid json{{"
             })
             local result =
@@ -236,8 +215,6 @@ describe("evidential", function()
         it("should return false when experiment_id is missing", function()
             turn.app.set_config({
                 evidential_api_key = "test-api-key",
-                evidential_organization_id = "test-org-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
                 experiment_config = json.encode({arms = {arm_abc = "journey-1"}})
             })
             local result =
@@ -249,8 +226,6 @@ describe("evidential", function()
         it("should return false when arms is missing", function()
             turn.app.set_config({
                 evidential_api_key = "test-api-key",
-                evidential_organization_id = "test-org-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
                 experiment_config = json.encode({
                     experiment_id = "experiment_123"
                 })
@@ -264,8 +239,6 @@ describe("evidential", function()
         it("should return false when arms is empty", function()
             turn.app.set_config({
                 evidential_api_key = "test-api-key",
-                evidential_organization_id = "test-org-id",
-                evidential_api_base_url = "https://api.evidential.com/v1/experiments",
                 experiment_config = json.encode({
                     experiment_id = "experiment_123",
                     arms = {}
