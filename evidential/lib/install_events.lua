@@ -34,19 +34,7 @@ end
 function Functions.uninstall()
     -- Clean up subscriptions and data dictionary
     turn.app.set_contact_subscriptions({})
-    local experiment_data = turn.data.dictionary.get_global(
-                                "evidential_experiment")
-    if experiment_data and experiment_data.arms then
-        local arms = experiment_data.arms
-        if type(arms) == "string" then arms = turn.json.decode(arms) end
-        for _, journey_uuid in pairs(arms) do
-            local journey = turn.journeys.get(journey_uuid)
-            if journey then turn.journeys.delete(journey_uuid) end
-        end
-
-        turn.data.dictionary.delete_global("evidential_experiment")
-    end
-
+    turn.data.dictionary.delete_global("evidential_experiment")
     turn.logger.info("App uninstalled")
     return true
 end
