@@ -10,8 +10,10 @@ describe("evidential", function()
     local number
 
     before(function()
+        -- Reset the turn environment before each test suite
         turn.test.reset()
 
+        -- Set up a default app config and experiment data in the data dictionary for testing
         app_config = {
             enabled = true,
             uuid = "evidential-app-uuid",
@@ -30,6 +32,8 @@ describe("evidential", function()
 
         number = {id = "123", msisdn = "+1234567890"}
 
+        -- Define a mock turn.data.dictionary for testing since the real one is not available 
+        -- in this test environment
         turn.data = {
             dictionary = {
                 global = {},
@@ -50,24 +54,20 @@ describe("evidential", function()
             arms = {arm_a = "journey-1", arm_b = "journey-2"}
         }, {replace = true})
 
-        turn.app.get_journey_mapping = function()
-            return {
-                ["journey_name_1"] = "journey-1",
-                ["journey_name_2"] = "journey-2",
-                ["journey_name_3"] = "journey-3"
-            }
-        end
-
+        -- Set up test contact
         turn.test.add_contact({
             uuid = "test-route-contact",
             details = {msisdn = number.msisdn, name = "Test Contact"}
         })
 
-        turn.test.add_journey({
-            uuid = "journey-1",
-            name = "Arm ABC Journey",
-            enabled = true
-        })
+        -- Set up test journeys for arms
+        for i = 1, 3 do
+            turn.test.add_journey({
+                uuid = "journey-" .. i,
+                name = "Journey " .. i,
+                enabled = true
+            })
+        end
 
     end)
 
@@ -93,8 +93,15 @@ describe("evidential", function()
 
     describe("uninstall event", function()
         it("should handle uninstallation", function()
+            local journeys_before = turn.journeys.list()
             local result = App.on_event(app_config, number, "uninstall", {})
             assert(result == true, "Expected uninstall to return true")
+
+            experiment_data = turn.data.dictionary.get_global(
+                                  "evidential_experiment")
+            assert(experiment_data == nil,
+                   "Expected experiment data to be deleted from data dictionary")
+
         end)
     end)
 
@@ -139,7 +146,8 @@ describe("evidential", function()
 
             -- assert that the logged config object shows only the redacted API key
             local info = turn.test.get_log_messages("info")
-            assert(#info > 0, "Expected at least one info log entry: " .. turn.json.encode(info))
+            assert(#info > 0, "Expected at least one info log entry: " ..
+                       turn.json.encode(info))
             local found = false
             for _, entry in ipairs(info) do
                 if entry.message:match("evidential_api_key.*new%-api%-%*%*%*%*") then
@@ -147,7 +155,9 @@ describe("evidential", function()
                     break
                 end
             end
-            assert(found, "Expected **** in info log for evidential_api_key: " .. turn.json.encode(info))
+            assert(found,
+                   "Expected **** in info log for evidential_api_key: " ..
+                       turn.json.encode(info))
 
         end)
 
@@ -166,7 +176,8 @@ describe("evidential", function()
             }
 
             turn.app.update_config(new_config.config)
-            local result = App.on_event(new_config, number, "config_changed", {})
+            local result =
+                App.on_event(new_config, number, "config_changed", {})
             assert(result == true, "Expected config_changed to return true")
 
             local config = turn.app.get_config()
@@ -174,24 +185,27 @@ describe("evidential", function()
                    "Expected API key to be updated in config")
         end)
 
-        it("should NOT handle literal newlines in experiment_config string value", function()
-            local new_config = {
-                uuid = app_config.uuid,
-                config = {
-                    evidential_api_key = "new-api-key",
-                    evidential_organization_id = "new-organization-id",
-                    evidential_api_base_url = "new-base-url",
-                    experiment_config = "{\"experiment_name\": \"name\n2nd line\", " ..
-                        "\"experiment_id\": \"exp_id1\"," ..
-                        " \"arms\": {\"arm_1\": \"journey-1\", " ..
-                        "\"arm_2\": \"journey-2\"}}"
+        it(
+            "should NOT handle literal newlines in experiment_config string value",
+            function()
+                local new_config = {
+                    uuid = app_config.uuid,
+                    config = {
+                        evidential_api_key = "new-api-key",
+                        evidential_organization_id = "new-organization-id",
+                        evidential_api_base_url = "new-base-url",
+                        experiment_config = "{\"experiment_name\": \"name\n2nd line\", " ..
+                            "\"experiment_id\": \"exp_id1\"," ..
+                            " \"arms\": {\"arm_1\": \"journey-1\", " ..
+                            "\"arm_2\": \"journey-2\"}}"
+                    }
                 }
-            }
 
-            turn.app.update_config(new_config.config)
-            local result = App.on_event(new_config, number, "config_changed", {})
-            assert(result == false, "Expected config_changed to fail")
-        end)
+                turn.app.update_config(new_config.config)
+                local result = App.on_event(new_config, number,
+                                            "config_changed", {})
+                assert(result == false, "Expected config_changed to fail")
+            end)
 
         it("should return false when experiment_config is missing", function()
             turn.app.set_config({

@@ -4,9 +4,7 @@ local Functions = {}
 --[[ Returns a redacted copy of the config so it can be used for logging. ]]
 function Functions.redact_config_secrets(app_config)
     local logsafe = {}
-    for k, v in pairs(app_config) do
-        logsafe[k] = v
-    end
+    for k, v in pairs(app_config) do logsafe[k] = v end
     if logsafe.evidential_api_key then
         local key = tostring(logsafe.evidential_api_key)
         local shadow = string.sub(key, 1, 8) .. "****"
@@ -51,18 +49,14 @@ function Functions.set_experiment_config(app_config)
         return false
     end
 
-    journey_mapping = turn.app.get_journey_mapping()
-    journey_uuids = {}
-    for _, journey_uuid in pairs(journey_mapping) do
-        journey_uuids[journey_uuid] = true
-    end
     for arm_id, journey_uuid in pairs(experiment_config.arms) do
         arm_id = tostring(arm_id)
-        if not journey_uuids[journey_uuid] then
+        journey = turn.journeys.get(journey_uuid)
+        if not journey then
             turn.logger.error(
                 "Invalid journey UUID for arm " .. arm_id .. ": " ..
                     tostring(journey_uuid) ..
-                    " current mapping: " .. turn.json.encode(journey_mapping))
+                    " (Make sure the journey exists and is active)")
             return false
         end
     end
@@ -85,10 +79,9 @@ function Functions.set_experiment_config(app_config)
         arms = experiment_config.arms
     }, {replace = true})
 
-    turn.logger.info(
-        "Config validated: experiment=" .. experiment_config.experiment_id ..
-        ", arms=" .. turn.json.encode(experiment_config.arms)
-    )
+    turn.logger.info("Config validated: experiment=" ..
+                         experiment_config.experiment_id .. ", arms=" ..
+                         turn.json.encode(experiment_config.arms))
     return true
 end
 

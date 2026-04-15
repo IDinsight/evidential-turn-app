@@ -5,7 +5,7 @@
     "name": "evidential",
     "title": "Evidential",
     "type": "lua",
-    "version": "0.2.3"
+    "version": "0.2.4"
   },
   "config": {
     "evidential_api_base_url": "https://api.evidential.dev/v1/experiments",
