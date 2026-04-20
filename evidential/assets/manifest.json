@@ -5,7 +5,7 @@
     "name": "evidential",
     "title": "Evidential",
     "type": "lua",
-    "version": "0.2.5"
+    "version": "0.2.6"
   },
   "config": {
     "evidential_api_key": "your-api-key",
