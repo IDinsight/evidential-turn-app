@@ -4,35 +4,24 @@ An app to integrate with the [Evidential experiments platform](https://app.evide
 
 
 ## Quickstart
-1. Create an experiment on the [Evidential experiments platform](https://app.evidential.dev/) and note down the organization ID, API key, experiment ID and arm IDs for this experiment from the integration guide.
-2. Create a new Turn.io app and add the `evidential` app as a dependency.
-3. Configure the app with the required parameters (see [Configuration](#configuration) section).
-4. Create a base Journey to onboard contacts for your experiment, and add a block calling the `route_to_experiment` function from the App (see [Journey Functions](#journey-functions) section).
-5. Create separate Journeys for each arm of the experiment, following the [Arm Journey Contract](#arm-journey-contract), and update the corresponding arm IDs to journey UUIDs in the app config.
-5. If you're running a bandit experiment and want to collect outcomes in the arm journeys, make sure to call the `post_outcome_for_contact` function from the App with the appropriate outcome value to record the outcome in Evidential for analysis. (See [Journey Functions](#journey-functions) section for details on how to use this function in your journey.)
-6. Publish the app and the journeys, and start onboarding contacts to see them routed to their assigned arm journeys based on the experiment configuration in Evidential.
+0. Create a base Journey to onboard contacts for your experiment, and separate Journeys for each arm of a potential experiment, following the [Arm Journey Contract](#arm-journey-contract).
+1. Generate an API Key for Turn.io from Settings -> API and Webhooks
+2. Go to the [Evidential experiments platform](https://app.evidential.dev/), and add this API key on the "Integrations" page
+3. Create an experiment on the [Evidential experiments platform](https://app.evidential.dev/) and note down the Evidential API key and experiment ID for this experiment from the integration guide.
+4. Also in the integration guide, map the arms in your experiment to corresponding journeys on Turn.io (see [Arm Journey Contract](#arm-journey-contract) section for details on arm journey requirements).
+5. Back on Turn.io, create a new Turn.io app and add the `evidential` app as a dependency.
+6. Configure the app with the required parameters (see [Configuration](#configuration) section).
+7. Go back to your base Journey and add a block calling the `route_to_experiment` function from the App (see [Journey Functions](#journey-functions) section).
+8. If you're running a bandit experiment and want to collect outcomes in the arm journeys, make sure to call the `post_outcome_for_contact` function from the App with the appropriate outcome value to record the outcome in Evidential for analysis. (See [Journey Functions](#journey-functions) section for details on how to use this function in your journey.)
+9. Publish the app and the journeys, and start onboarding contacts to see them routed to their assigned arm journeys based on the experiment configuration in Evidential.
 
 
 ## Configuration
 
 The app requires the following configuration parameters (set in Turn.io UI):
-- `Evidential API Base URL`: Base URL for Evidential API (e.g. `https://api.evidential.dev/v1/experiments`)
 - `Evidential API Key`: API key for authenticating with Evidential API
-- `Evidential Organization ID`: Organization ID for your Evidential account
-- `Evidential Experiment Config`: JSON string with experiment details:
+- `Evidential Experiment ID`: ID of the experiment in Evidential
 
-```json
-{
-  "experiment_name": "My Experiment",
-  "experiment_id": "exp_12345",
-  "arms": {
-    "arm_id_1": "journey-uuid-for-arm-1",
-    "arm_id_2": "journey-uuid-for-arm-2"
-  }
-}
-```
-
-The `arms` map links each arm ID in the experiment to the UUID of the Turn journey that should be started for contacts assigned to that arm. Create the arm journeys first, then reference their UUIDs here (see [Arm Journey Contract](#arm-journey-contract) for more details).
 
 ## Journey Functions
 

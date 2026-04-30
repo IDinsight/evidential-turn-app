@@ -58,19 +58,19 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
         
         -- Check that the arm_id from the API response is one of the arms defined in the 
         -- experiment config
-        local arms = experiment_data.arms
-        if type(arms) == "string" then
-            arms = turn.json.decode(arms)
+        local arm_journey_map = experiment_data.arm_journey_map
+        if type(arm_journey_map) == "string" then
+            arm_journey_map = turn.json.decode(arm_journey_map)
         end
         local config_arm_ids = {}
-        for arm_key, journey_uuid in pairs(arms) do
+        for arm_key, journey_uuid in pairs(arm_journey_map) do
             config_arm_ids[arm_key] = true
         end
         if not config_arm_ids[arm_id] then
             return nil, "Received unknown arm_id from API: " .. tostring(arm_id)
         end
 
-        local journey_uuid = arms[arm_id]
+        local journey_uuid = arm_journey_map[arm_id]
         
         local result =  {
             arm_id = arm_id,
