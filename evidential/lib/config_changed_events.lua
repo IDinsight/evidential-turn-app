@@ -1,6 +1,6 @@
 local turn = require("turn")
 local Functions = {}
-local EVIDENTIAL_API_BASE_URL = "https://api.evidential.dev/v1/experiments"
+local EVIDENTIAL_API_BASE_URL = "https://api.evidential.dev/v1"
 
 --[[ Returns a redacted copy of the config so it can be used for logging. ]]
 function Functions.redact_config_secrets(app_config)
