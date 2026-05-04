@@ -19,10 +19,7 @@ describe("evidential", function()
             uuid = "evidential-app-uuid",
             config = {
                 evidential_api_key = "your-api-key",
-                experiment_config = json.encode({
-                    experiment_id = 'experiment_123',
-                    arms = {arm_a = 'journey-1', arm_b = 'journey-2'}
-                })
+                experiment_id = 'experiment_123'
             }
         }
 
@@ -30,7 +27,7 @@ describe("evidential", function()
 
         number = {id = "123", msisdn = "+1234567890"}
 
-        -- Define a mock turn.data.dictionary for testing since the real one is not available 
+        -- Define a mock turn.data.dictionary for testing since the real one is not available
         -- in this test environment
         turn.data = {
             dictionary = {
@@ -49,7 +46,7 @@ describe("evidential", function()
 
         turn.data.dictionary.set_global("evidential_experiment", {
             experiment_id = "experiment_123",
-            arms = {arm_a = "journey-1", arm_b = "journey-2"}
+            arm_journey_map = {arm_a = "journey-1", arm_b = "journey-2"}
         }, {replace = true})
 
         -- Set up test contact
@@ -66,6 +63,20 @@ describe("evidential", function()
                 enabled = true
             })
         end
+
+        -- Default 200 mock for the Evidential turn-app-config fetch.
+        -- journey_event handlers call set_experiment_config -> HTTP on every
+        -- invocation, so all journey_event tests rely on this mock.
+        turn.test.mock_http(
+            "integrations/experiments/experiment_123/turn%-app%-config", {
+                method = "GET",
+                status = 200,
+                body = json.encode({
+                    experiment_id = "experiment_123",
+                    experiment_name = "Test Experiment",
+                    arm_journey_map = {arm_a = "journey-1", arm_b = "journey-2"}
+                })
+            })
 
     end)
 
@@ -101,17 +112,29 @@ describe("evidential", function()
     end)
 
     describe("config_changed event", function()
-        it("should handle config changes and update data dictionary", function()
+        it("should fetch and store experiment config from the Evidential API",
+           function()
             local new_config = {
                 uuid = app_config.uuid,
                 config = {
                     evidential_api_key = "new-api-key",
-                    experiment_config = json.encode({
-                        experiment_id = 'experiment_456',
-                        arms = {arm_1 = 'journey-1', arm_2 = 'journey-2'}
-                    })
+                    experiment_id = 'experiment_456'
                 }
             }
+
+            turn.test.mock_http(
+                "integrations/experiments/experiment_456/turn%-app%-config", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({
+                        experiment_id = "experiment_456",
+                        experiment_name = "New Experiment",
+                        arm_journey_map = {
+                            arm_a = "journey-1",
+                            arm_b = "journey-2"
+                        }
+                    })
+                })
 
             turn.app.update_config(new_config.config) -- Ensure config is updated before triggering event
             local result =
@@ -127,11 +150,13 @@ describe("evidential", function()
             assert(experiment_data ~= nil,
                    "Expected experiment data to be set in data dictionary")
             assert(experiment_data.experiment_id == "experiment_456",
-                   "Expected experiment_id to match config")
-            assert(experiment_data.arms.arm_1 == "journey-1",
-                   "Expected arm_1 to match config")
-            assert(experiment_data.arms.arm_2 == "journey-2",
-                   "Expected arm_2 to match config")
+                   "Expected experiment_id to match API response")
+            assert(experiment_data.experiment_name == "New Experiment",
+                   "Expected experiment_name to be stored from API response")
+            assert(experiment_data.arm_journey_map.arm_a == "journey-1",
+                   "Expected arm_a to map to journey-1")
+            assert(experiment_data.arm_journey_map.arm_b == "journey-2",
+                   "Expected arm_b to map to journey-2")
 
             -- assert that the logged config object shows only the redacted API key
             local info = turn.test.get_log_messages("info")
@@ -150,105 +175,130 @@ describe("evidential", function()
 
         end)
 
-        it("should handle newlines in experiment_config", function()
+        it("should fail when the Evidential API returns a non-200 response",
+           function()
             local new_config = {
                 uuid = app_config.uuid,
                 config = {
                     evidential_api_key = "new-api-key",
-                    experiment_config = "\n{\"experiment_name\": \"name\\n2nd line\", " ..
-                        "\n\"experiment_id\": \"exp_id1\"," ..
-                        " \n \"arms\": {\"arm_1\": \"journey-1\", " ..
-                        "\n\n \"arm_2\": \"journey-2\"}} \n "
+                    experiment_id = 'experiment_456'
                 }
             }
+
+            turn.test.mock_http(
+                "integrations/experiments/experiment_456/turn%-app%-config",
+                {method = "GET", status = 500, body = "Internal Server Error"})
 
             turn.app.update_config(new_config.config)
             local result =
                 App.on_event(new_config, number, "config_changed", {})
-            assert(result == true, "Expected config_changed to return true")
+            assert(not result,
+                   "Expected config_changed to return falsy on API failure")
+        end)
 
-            local config = turn.app.get_config()
-            assert(config.evidential_api_key == "new-api-key",
-                   "Expected API key to be updated in config")
+        it("should fail when the API response body is empty/null", function()
+            local new_config = {
+                uuid = app_config.uuid,
+                config = {
+                    evidential_api_key = "new-api-key",
+                    experiment_id = 'experiment_456'
+                }
+            }
+
+            turn.test.mock_http(
+                "integrations/experiments/experiment_456/turn%-app%-config",
+                {method = "GET", status = 200, body = "null"})
+
+            turn.app.update_config(new_config.config)
+            local result =
+                App.on_event(new_config, number, "config_changed", {})
+            assert(not result,
+                   "Expected config_changed to return falsy on empty response body")
+        end)
+
+        it("should fail when the API response is missing arm_journey_map",
+           function()
+            local new_config = {
+                uuid = app_config.uuid,
+                config = {
+                    evidential_api_key = "new-api-key",
+                    experiment_id = 'experiment_456'
+                }
+            }
+
+            turn.test.mock_http(
+                "integrations/experiments/experiment_456/turn%-app%-config", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({
+                        experiment_id = "experiment_456",
+                        experiment_name = "New Experiment"
+                    })
+                })
+
+            turn.app.update_config(new_config.config)
+            local result =
+                App.on_event(new_config, number, "config_changed", {})
+            assert(not result,
+                   "Expected config_changed to return falsy when arm_journey_map missing")
+        end)
+
+        it("should fail when the API response is missing experiment_id",
+           function()
+            local new_config = {
+                uuid = app_config.uuid,
+                config = {
+                    evidential_api_key = "new-api-key",
+                    experiment_id = 'experiment_456'
+                }
+            }
+
+            turn.test.mock_http(
+                "integrations/experiments/experiment_456/turn%-app%-config", {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({
+                        experiment_name = "New Experiment",
+                        arm_journey_map = {arm_a = "journey-1"}
+                    })
+                })
+
+            turn.app.update_config(new_config.config)
+            local result =
+                App.on_event(new_config, number, "config_changed", {})
+            assert(not result,
+                   "Expected config_changed to return falsy when experiment_id missing")
         end)
 
         it(
-            "should NOT handle literal newlines in experiment_config string value",
+            "should fail when arm_journey_map references an unknown journey UUID",
             function()
                 local new_config = {
                     uuid = app_config.uuid,
                     config = {
                         evidential_api_key = "new-api-key",
-                        experiment_config = "{\"experiment_name\": \"name\n2nd line\", " ..
-                            "\"experiment_id\": \"exp_id1\"," ..
-                            " \"arms\": {\"arm_1\": \"journey-1\", " ..
-                            "\"arm_2\": \"journey-2\"}}"
+                        experiment_id = 'experiment_456'
                     }
                 }
+
+                turn.test.mock_http(
+                    "integrations/experiments/experiment_456/turn%-app%-config",
+                    {
+                        method = "GET",
+                        status = 200,
+                        body = json.encode({
+                            experiment_id = "experiment_456",
+                            experiment_name = "New Experiment",
+                            arm_journey_map = {arm_a = "journey-does-not-exist"}
+                        })
+                    })
 
                 turn.app.update_config(new_config.config)
                 local result = App.on_event(new_config, number,
                                             "config_changed", {})
-                assert(result == false, "Expected config_changed to fail")
+                assert(not result,
+                       "Expected config_changed to return falsy when journey UUID is unknown")
             end)
-
-        it("should return false when experiment_config is missing", function()
-            turn.app.set_config({evidential_api_key = "test-api-key"})
-            local result =
-                App.on_event(app_config, number, "config_changed", {})
-            assert(result == false,
-                   "Expected config_changed to return false when experiment_config is missing")
-        end)
-
-        it("should return false for malformed JSON in experiment_config",
-           function()
-            turn.app.set_config({
-                evidential_api_key = "test-api-key",
-                experiment_config = "not valid json{{"
-            })
-            local result =
-                App.on_event(app_config, number, "config_changed", {})
-            assert(result == false,
-                   "Expected config_changed to return false for malformed JSON")
-        end)
-
-        it("should return false when experiment_id is missing", function()
-            turn.app.set_config({
-                evidential_api_key = "test-api-key",
-                experiment_config = json.encode({arms = {arm_abc = "journey-1"}})
-            })
-            local result =
-                App.on_event(app_config, number, "config_changed", {})
-            assert(result == false,
-                   "Expected config_changed to return false when experiment_id is missing")
-        end)
-
-        it("should return false when arms is missing", function()
-            turn.app.set_config({
-                evidential_api_key = "test-api-key",
-                experiment_config = json.encode({
-                    experiment_id = "experiment_123"
-                })
-            })
-            local result =
-                App.on_event(app_config, number, "config_changed", {})
-            assert(result == false,
-                   "Expected config_changed to return false when arms is missing")
-        end)
-
-        it("should return false when arms is empty", function()
-            turn.app.set_config({
-                evidential_api_key = "test-api-key",
-                experiment_config = json.encode({
-                    experiment_id = "experiment_123",
-                    arms = {}
-                })
-            })
-            local result =
-                App.on_event(app_config, number, "config_changed", {})
-            assert(result == false,
-                   "Expected config_changed to return false when arms is empty")
-        end)
     end)
 
     -- Test Journey Events --
@@ -474,6 +524,34 @@ describe("evidential", function()
             end)
 
         end)
+
+        it(
+            "should return error when set_experiment_config fails on a journey_event",
+            function()
+                -- Point the app at an experiment_id that has no turn-app-config
+                -- mock. The default Turn HTTP mock returns a body without
+                -- experiment_id/arm_journey_map, so set_experiment_config
+                -- validation fails and on_event hits the new error path.
+                turn.app.update_config({
+                    evidential_api_key = "your-api-key",
+                    experiment_id = 'experiment_unmocked'
+                })
+
+                local journey_data = {
+                    function_name = "get_assignment_for_contact",
+                    args = {number.msisdn},
+                    chat_uuid = "chat-123"
+                }
+
+                local status, result = App.on_event(app_config, number,
+                                                    "journey_event",
+                                                    journey_data)
+                assert(status == "error",
+                       "Expected error status when set_experiment_config fails")
+                assert(result ==
+                           "Invalid experiment config. Check that you have a valid API key and experiment ID.",
+                       "Expected specific error message; got: " ..
+                           tostring(result))
+            end)
     end)
 end)
-

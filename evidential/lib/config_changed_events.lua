@@ -1,5 +1,6 @@
 local turn = require("turn")
 local Functions = {}
+local EVIDENTIAL_API_BASE_URL = "https://api.evidential.dev/v1"
 
 --[[ Returns a redacted copy of the config so it can be used for logging. ]]
 function Functions.redact_config_secrets(app_config)
@@ -15,73 +16,62 @@ end
 
 --[[ Validates the app's config and sets the experiment config in the data dictionary. ]]
 function Functions.set_experiment_config(app_config)
-    local experiment_config_raw = app_config.experiment_config
+    local url = string.format("%s/integrations/experiments/%s/turn-app-config",
+                              EVIDENTIAL_API_BASE_URL, app_config.experiment_id)
+    local body, status_code = turn.http.request({
+        url = url,
+        method = "GET",
+        headers = {["X-API-Key"] = tostring(app_config.evidential_api_key)}
+    })
 
-    -- Validate raw config
-    if not experiment_config_raw then
-        turn.logger.error("Experiment config is missing in app config")
-        return false
+    -- Validate response and parse experiment config
+    local experiment_config
+
+    if status_code == 200 then
+        turn.logger.info("Received 200 response from Evidential API")
+        experiment_config = turn.json.decode(body)
+        if not experiment_config then
+            turn.logger.error(
+                "Empty response body when fetching experiment config")
+            return nil, "Invalid experiment config: empty response body"
+        end
+    else
+        turn.logger.error("Failed to fetch experiment config: HTTP " ..
+                              tostring(status_code) .. " - " .. tostring(body))
+        return nil, "Failed to fetch experiment config: HTTP " ..
+                   tostring(status_code)
     end
 
-    local ok, experiment_config = pcall(turn.json.decode, experiment_config_raw)
-    if not ok then
-        turn.logger.error("Invalid JSON in experiment_config: " ..
-                              tostring(experiment_config))
-        return false
-    end
-
-    -- Validate required fields in parsed config
-    if not experiment_config.experiment_id then
+    if not experiment_config.experiment_id or
+        not experiment_config.arm_journey_map then
         turn.logger.error(
-            "Experiment config missing required field: experiment_id")
-        return false
+            "Invalid experiment config: missing required fields. Received config: " ..
+                turn.json.encode(experiment_config))
+        return nil, "Invalid experiment config: missing required fields"
     end
 
-    if not experiment_config.arms then
-        turn.logger.error("Experiment config missing required field: arms")
-        return false
-    end
-
-    local arm_count = 0
-    for _ in pairs(experiment_config.arms) do arm_count = arm_count + 1 end
-    if arm_count < 2 then
-        turn.logger.error("Experiment config arms must have at least two arms")
-        return false
-    end
-
-    for arm_id, journey_uuid in pairs(experiment_config.arms) do
+    -- Validate Journey UUIDs in parsed config
+    for arm_id, journey_uuid in pairs(experiment_config.arm_journey_map) do
         arm_id = tostring(arm_id)
-        journey = turn.journeys.get(journey_uuid)
+        local journey = turn.journeys.get(journey_uuid)
         if not journey then
             turn.logger.error(
                 "Invalid journey UUID for arm " .. arm_id .. ": " ..
                     tostring(journey_uuid) ..
                     " (Make sure the journey exists and is active)")
-            return false
+            return nil, "Invalid journey UUID for arm " .. arm_id
         end
     end
 
-    -- Write parsed config to data dictionary so journey events
-    -- can read structured data without re-parsing JSON on every call.
-    -- Write to both local (for @local.evidential_experiment.* in Stacks)
-    -- and global (for programmatic access from any journey context).
-
-    -- local journey_mapping = turn.app.get_journey_mapping()
-    -- for _, journey_uuid in pairs(journey_mapping) do
-    --     turn.data.dictionary.set_local(journey_uuid, "evidential_experiment", {
-    --         experiment_id = experiment_config.experiment_id,
-    --         arms = experiment_config.arms
-    --     }, { replace = true })
-    -- end
-
     turn.data.dictionary.set_global("evidential_experiment", {
         experiment_id = experiment_config.experiment_id,
-        arms = experiment_config.arms
+        experiment_name = experiment_config.experiment_name,
+        arm_journey_map = experiment_config.arm_journey_map
     }, {replace = true})
 
     turn.logger.info("Config validated: experiment=" ..
-                         experiment_config.experiment_id .. ", arms=" ..
-                         turn.json.encode(experiment_config.arms))
+                         experiment_config.experiment_id .. ", arm_journey_map=" ..
+                         turn.json.encode(experiment_config.arm_journey_map))
     return true
 end
 
