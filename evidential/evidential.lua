@@ -72,6 +72,7 @@ function App.on_event(app, number, event, data)
             assert(#args >= 1,
                    "Expected at least 1 arguments for get_assignment_for_contact")
             local contact_id, update_contact_fields = args[1], args[2]
+
             local contact_uuid = nil
             if update_contact_fields then
                 contact_uuid = data.contact_uuid

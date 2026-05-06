@@ -40,7 +40,6 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
                               EVIDENTIAL_API_BASE_URL,
                               experiment_id,
                               contact_id)
-
     local body, status_code = turn.http.request({
         url = url,
         method = "GET",
@@ -48,6 +47,7 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
             ["X-API-Key"] = tostring(config.evidential_api_key),
         }
     })
+
     if status_code == 200 then
         local response_body = turn.json.decode(body)
         if not response_body or not response_body.assignment then
@@ -80,6 +80,7 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
         -- Update contact fields with experiment assignment info for use in Stacks and other journey contexts
         if contact_uuid ~= nil then
             local contact, found = turn.contacts.get(contact_uuid)
+            
             if found then
                 turn.contacts.update_contact_details(contact, {
                     assignment_arm_id = result.arm_id,
@@ -87,7 +88,6 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
                     assignment_outcome_recorded = false
                 })
             else
-                print("Log skip")
                 turn.logger.warning("Contact not found for uuid: " .. tostring(contact_uuid) ..
                     ", skipping profile update")
             end
@@ -120,7 +120,6 @@ function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data
     if status_code == 200 then
         local response_body = turn.json.decode(body)
 
-        
         -- Update contact field to indicate that the outcome has been recorded
         if contact_uuid ~= nil then
             local contact, found = turn.contacts.get(contact_uuid)
@@ -128,14 +127,13 @@ function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data
                 turn.contacts.update_contact_details(contact, {
                     assignment_outcome_recorded = true
                 })
-                turn.logger.info("Recorded outcome for contact " .. contact_id ..
+                turn.logger.info("Recorded outcome for contact " .. tostring(contact_uuid) ..
                     ": outcome=" .. tostring(outcome))
             else
                 turn.logger.warning("Contact not found for uuid: " .. tostring(contact_uuid) ..
                     ", skipping profile update")
             end
         end
-
         return response_body
     else
         return nil, "Failed to post outcome: " .. (body or "unknown error")

@@ -25,7 +25,7 @@ describe("evidential", function()
 
         turn.app.update_config(app_config.config)
 
-        number = {id = "123", msisdn = "+1234567890"}
+        number = {id = "123", urn = "1234567890"}
 
         -- Define a mock turn.data.dictionary for testing since the real one is not available
         -- in this test environment
@@ -50,10 +50,23 @@ describe("evidential", function()
         }, {replace = true})
 
         -- Set up test contact
-        turn.test.add_contact({
+        global_contact = {
             uuid = "test-route-contact",
-            details = {msisdn = number.msisdn, name = "Test Contact"}
-        })
+            details = {
+                urn = "1234567899",
+                name = "Test Contact",
+                uuid = "test-route-contact"
+            }
+        }
+        turn.test.add_contact(global_contact)
+        -- Mock the get function
+        turn.contacts.get = function(uuid)
+            if uuid == global_contact.uuid then
+                return global_contact, true
+            else
+                return nil, false
+            end
+        end
 
         -- Set up test journeys for arms
         for i = 1, 3 do
@@ -309,21 +322,26 @@ describe("evidential", function()
                 function()
                     local journey_data = {
                         function_name = "get_assignment_for_contact",
-                        args = {number.msisdn},
-                        chat_uuid = "chat-123"
+                        args = {global_contact.details.urn, true},
+                        chat_uuid = "chat-123",
+                        contact_uuid = global_contact.uuid
                     }
 
-                    turn.test.mock_http(
-                        "experiments/experiment_123/assignments/%+1234567890", {
-                            method = "GET",
-                            status = 200,
-                            body = json.encode({assignment = {arm_id = "arm_a"}})
-                        })
-
+                    turn.test.mock_http(string.format(
+                                            "experiments/experiment_123/assignments/%s",
+                                            tostring(global_contact.details.urn)),
+                                        {
+                        method = "GET",
+                        status = 200,
+                        body = json.encode({assignment = {arm_id = "arm_a"}})
+                    })
                     local status, result =
                         App.on_event(app_config, number, "journey_event",
                                      journey_data)
-                    local contact = turn.contacts.find({msisdn = number.msisdn})
+
+                    local contact = turn.contacts.find({
+                        uuid = global_contact.uuid
+                    })
                     assert(contact.details.experiment_id == "experiment_123",
                            "Expected experiment_id field to be set on contact")
                     assert(contact.details.assignment_arm_id == "arm_a",
@@ -343,21 +361,26 @@ describe("evidential", function()
                 function()
                     local journey_data = {
                         function_name = "get_assignment_for_contact",
-                        args = {number.msisdn, false},
-                        chat_uuid = "chat-123"
+                        args = {global_contact.details.urn, false},
+                        chat_uuid = "chat-123",
+                        contact_uuid = global_contact.uuid
                     }
 
-                    turn.test.mock_http(
-                        "experiments/experiment_123/assignments/%+1234567890", {
-                            method = "GET",
-                            status = 200,
-                            body = json.encode({assignment = {arm_id = "arm_a"}})
-                        })
+                    turn.test.mock_http(string.format(
+                                            "experiments/experiment_123/assignments/%s",
+                                            tostring(global_contact.details.urn)),
+                                        {
+                        method = "GET",
+                        status = 200,
+                        body = json.encode({assignment = {arm_id = "arm_a"}})
+                    })
 
                     local status, result =
                         App.on_event(app_config, number, "journey_event",
                                      journey_data)
-                    local contact = turn.contacts.find({msisdn = number.msisdn})
+                    local contact = turn.contacts.find({
+                        uuid = global_contact.uuid
+                    })
                     assert(contact.details.experiment_id == nil,
                            "Expected experiment_id field to not be set on contact")
                     assert(contact.details.assignment_arm_id == nil,
@@ -371,37 +394,40 @@ describe("evidential", function()
             it("should return error when Evidential API fails", function()
                 local journey_data = {
                     function_name = "get_assignment_for_contact",
-                    args = {number.msisdn},
-                    chat_uuid = "chat-123"
+                    args = {global_contact.details.urn, false},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
-                turn.test.mock_http(
-                    "experiments/experiment_123/assignments/%+1234567890", {
-                        method = "GET",
-                        status = 500,
-                        body = "Internal Server Error"
-                    })
+                turn.test.mock_http(string.format(
+                                        "experiments/experiment_123/assignments/%s",
+                                        tostring(global_contact.details.urn)), {
+                    method = "GET",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
 
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
-                                                    journey_data)
+                                                    journey_data) --- IGNORE ---
                 assert(status == "error", "Expected error status on API failure")
             end)
 
             it("should return error when arm_id is not in config", function()
                 local journey_data = {
                     function_name = "get_assignment_for_contact",
-                    args = {number.msisdn},
-                    chat_uuid = "chat-123"
+                    args = {global_contact.details.urn, false},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
-                turn.test.mock_http(
-                    "experiments/experiment_123/assignments/%+1234567890", {
-                        method = "GET",
-                        status = 200,
-                        body = json.encode(
-                            {assignment = {arm_id = "arm_unknown"}})
-                    })
+                turn.test.mock_http(string.format(
+                                        "experiments/experiment_123/assignments/%s",
+                                        tostring(global_contact.details.urn)), {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({assignment = {arm_id = "arm_unknown"}})
+                })
 
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
@@ -419,17 +445,18 @@ describe("evidential", function()
             it("should post outcome to Evidential API", function()
                 local journey_data = {
                     function_name = "post_outcome_for_contact",
-                    args = {number.msisdn, 0.},
-                    chat_uuid = "chat-123"
+                    args = {global_contact.details.urn, 0.},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
-                turn.test.mock_http(
-                    "experiments/experiment_123/assignments/%+1234567890/outcome",
-                    {
-                        method = "POST",
-                        status = 200,
-                        body = json.encode({status = "recorded"})
-                    })
+                turn.test.mock_http(string.format(
+                                        "experiments/experiment_123/assignments/%s/outcome",
+                                        tostring(global_contact.details.urn)), {
+                    method = "POST",
+                    status = 200,
+                    body = json.encode({status = "recorded"})
+                })
 
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
@@ -443,17 +470,18 @@ describe("evidential", function()
             it("should return error when Evidential API fails", function()
                 local journey_data = {
                     function_name = "post_outcome_for_contact",
-                    args = {number.msisdn, 0.},
-                    chat_uuid = "chat-123"
+                    args = {global_contact.details.urn, 0.},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
-                turn.test.mock_http(
-                    "experiments/experiment_123/assignments/%+1234567890/outcome",
-                    {
-                        method = "POST",
-                        status = 500,
-                        body = "Internal Server Error"
-                    })
+                turn.test.mock_http(string.format(
+                                        "experiments/experiment_123/assignments/%s/outcome",
+                                        tostring(global_contact.details.urn)), {
+                    method = "POST",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
 
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
@@ -467,24 +495,26 @@ describe("evidential", function()
             it("should route contact to arm journey", function()
                 local journey_data = {
                     function_name = "route_to_experiment",
-                    args = {number.msisdn},
-                    chat_uuid = "chat-123"
+                    args = {global_contact.details.urn},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
-                turn.test.mock_http(
-                    "experiments/experiment_123/assignments/%+1234567890", {
-                        method = "GET",
-                        status = 200,
-                        body = json.encode({
-                            assignment = {arm_id = "arm_a"},
-                            experiment_id = "experiment_123",
-                            journey_uuid = "journey-1"
-                        })
+                turn.test.mock_http(string.format(
+                                        "experiments/experiment_123/assignments/%s",
+                                        tostring(global_contact.details.urn)), {
+                    method = "GET",
+                    status = 200,
+                    body = json.encode({
+                        assignment = {arm_id = "arm_a"},
+                        experiment_id = "experiment_123",
+                        journey_uuid = "journey-1"
                     })
-
+                })
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
                                                     journey_data)
+
                 assert(status == "continue", "Expected routing to succeed")
                 assert(result.routed == true, "Expected routed flag to be true")
                 assert(result.arm_id == "arm_a", "Expected arm_id in result")
@@ -493,16 +523,18 @@ describe("evidential", function()
             it("should return error when Evidential API fails", function()
                 local journey_data = {
                     function_name = "route_to_experiment",
-                    args = {number.msisdn},
-                    chat_uuid = "chat-123"
+                    args = {global_contact.details.urn},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
-                turn.test.mock_http(
-                    "experiments/experiment_123/assignments/%+1234567890", {
-                        method = "GET",
-                        status = 500,
-                        body = "Internal Server Error"
-                    })
+                turn.test.mock_http(string.format(
+                                        "experiments/experiment_123/assignments/%s",
+                                        tostring(global_contact.details.urn)), {
+                    method = "GET",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
 
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
@@ -539,7 +571,7 @@ describe("evidential", function()
 
                 local journey_data = {
                     function_name = "get_assignment_for_contact",
-                    args = {number.msisdn},
+                    args = {global_contact.details.urn},
                     chat_uuid = "chat-123"
                 }
 
