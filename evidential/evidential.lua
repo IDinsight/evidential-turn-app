@@ -65,19 +65,21 @@ function App.on_event(app, number, event, data)
             assert(#args >= 1, "Expected 1 argument for route_to_experiment")
             local contact_id = args[1]
             return JourneyEvents.route_to_journey(contact_id, experiment_data,
-                                                  data.chat_uuid)
+                                                  data.chat_uuid,
+                                                  data.contact_uuid)
 
         elseif function_name == "get_assignment_for_contact" then
             assert(#args >= 1,
                    "Expected at least 1 arguments for get_assignment_for_contact")
             local contact_id, update_contact_fields = args[1], args[2]
-            if update_contact_fields == nil then
-                update_contact_fields = true
+
+            local contact_uuid = nil
+            if update_contact_fields then
+                contact_uuid = data.contact_uuid
             end
 
             local result, err = JourneyEvents.get_assignment_for_contact(
-                                    contact_id, experiment_data,
-                                    update_contact_fields)
+                                    contact_id, experiment_data, contact_uuid)
             if result then
                 return "continue", {
                     assignment = result.arm_id,
@@ -94,7 +96,8 @@ function App.on_event(app, number, event, data)
                    "Expected 2 arguments for post_outcome_for_contact")
             local contact_id, outcome = args[1], args[2]
             local response, err = JourneyEvents.post_outcome_for_contact(
-                                      contact_id, outcome, experiment_data)
+                                      contact_id, outcome, experiment_data,
+                                      data.contact_uuid)
             if response then
                 return "continue", {outcome_response = response}
             else

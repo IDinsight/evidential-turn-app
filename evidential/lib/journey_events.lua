@@ -2,9 +2,9 @@ local turn = require("turn")
 local Functions = {}
 local EVIDENTIAL_API_BASE_URL = "https://api.evidential.dev/v1/experiments"
 
-function Functions.route_to_journey(contact_id, experiment_data, chat_uuid)
+function Functions.route_to_journey(contact_id, experiment_data, chat_uuid, contact_uuid)
     local result, err = Functions.get_assignment_for_contact(
-        contact_id, experiment_data, true)
+        contact_id, experiment_data, contact_uuid)
     if not result then
         turn.logger.error(err)
         return "error", err
@@ -31,7 +31,7 @@ function Functions.route_to_journey(contact_id, experiment_data, chat_uuid)
     end
 end
 
-function Functions.get_assignment_for_contact(contact_id, experiment_data, update_contact_fields)
+function Functions.get_assignment_for_contact(contact_id, experiment_data, contact_uuid)
     local config = turn.app.get_config()
 
     local experiment_id = experiment_data.experiment_id
@@ -40,7 +40,6 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
                               EVIDENTIAL_API_BASE_URL,
                               experiment_id,
                               contact_id)
-
     local body, status_code = turn.http.request({
         url = url,
         method = "GET",
@@ -78,16 +77,18 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
             journey_uuid = journey_uuid
         }
 
-        if update_contact_fields then
         -- Update contact fields with experiment assignment info for use in Stacks and other journey contexts
-            local contact, found = turn.contacts.find({msisdn = contact_id})
+        if contact_uuid ~= nil then
+            local contact, found = turn.contacts.get(contact_uuid)
+            
             if found then
                 turn.contacts.update_contact_details(contact, {
                     assignment_arm_id = result.arm_id,
-                    experiment_id = result.experiment_id
+                    experiment_id = result.experiment_id,
+                    assignment_outcome_recorded = false
                 })
             else
-                turn.logger.warning("Contact not found for msisdn: " .. contact_id ..
+                turn.logger.warning("Contact not found for uuid: " .. tostring(contact_uuid) ..
                     ", skipping profile update")
             end
         end
@@ -97,7 +98,7 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, updat
     end
 end
 
-function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data)
+function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data, contact_uuid)
     local config = turn.app.get_config()
 
     local experiment_id = experiment_data.experiment_id
@@ -118,6 +119,21 @@ function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data
 
     if status_code == 200 then
         local response_body = turn.json.decode(body)
+
+        -- Update contact field to indicate that the outcome has been recorded
+        if contact_uuid ~= nil then
+            local contact, found = turn.contacts.get(contact_uuid)
+            if found then
+                turn.contacts.update_contact_details(contact, {
+                    assignment_outcome_recorded = true
+                })
+                turn.logger.info("Recorded outcome for contact " .. tostring(contact_uuid) ..
+                    ": outcome=" .. tostring(outcome))
+            else
+                turn.logger.warning("Contact not found for uuid: " .. tostring(contact_uuid) ..
+                    ", skipping profile update")
+            end
+        end
         return response_body
     else
         return nil, "Failed to post outcome: " .. (body or "unknown error")
