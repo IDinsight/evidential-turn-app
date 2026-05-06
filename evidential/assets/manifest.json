@@ -5,7 +5,7 @@
     "name": "evidential",
     "title": "Evidential",
     "type": "lua",
-    "version": "0.3.1"
+    "version": "0.3.5"
   },
   "config": {
     "evidential_api_key": "your-api-key",
@@ -23,6 +23,12 @@
       "name": "assignment_arm_id",
       "private": false,
       "type": "STRING"
+    },
+    {
+      "display": "Assignment Outcome Recorded",
+      "name": "assignment_outcome_recorded",
+      "private": false,
+      "type": "BOOLEAN"
     }
   ],
   "flows": [],

@@ -14,6 +14,7 @@ function Functions.install()
     local contact_subscriptions = turn.app.get_contact_subscriptions()
     table.insert(contact_subscriptions, "experiment_id")
     table.insert(contact_subscriptions, "assignment_arm_id")
+    table.insert(contact_subscriptions, "assignment_outcome_recorded")
     local success_subscriptions, _ = turn.app.set_contact_subscriptions(
                                          contact_subscriptions)
 
