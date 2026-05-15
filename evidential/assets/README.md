@@ -20,7 +20,6 @@ An app to integrate with the [Evidential experiments platform](https://app.evide
 
 The app requires the following configuration parameters (set in Turn.io UI):
 - `Evidential API Key`: API key for authenticating with Evidential API
-- `Evidential Experiment ID`: ID of the experiment in Evidential
 
 
 ## Journey Functions
@@ -28,8 +27,8 @@ The app requires the following configuration parameters (set in Turn.io UI):
 ### route_to_experiment(contact_id)
 
 Used by the installed journey. Handles the full routing flow:
-1. Calls Evidential API to get the contact's arm assignment
-2. Resolves the arm ID to a journey UUID from config
+1. Calls Evidential API to get the contact's arm assignment for the input experiment ID
+2. Resolves the arm ID for the experiment to a journey UUID from config
 3. Updates the contact's profile fields (`assignment_arm_id`, `experiment_id`)
 4. Starts the arm journey via `turn.journeys.start()`
 
@@ -37,19 +36,19 @@ This function is called automatically by the installed Evidential Experiment jou
 
 **Usage in Journey:**
 ```
-app("evidential", "route_to_experiment", ["@contact.whatsapp_id"])
+app("evidential", "route_to_experiment", ["@contact.whatsapp_id", "experiment_id"])
 ```
 
 
 ### get_assignment_for_contact(contact_id, update_contact_fields)
 
-Returns the contact's arm assignment without routing, and optionally updates the contact's profile fields (by default, `update_contact_fields` is `true`). For custom journeys that want to handle routing themselves.
+Returns the contact's arm assignment for a given experiment ID without routing, and optionally updates the contact's profile fields (by default, `update_contact_fields` is `true`). For custom journeys that want to handle routing themselves.
 
 **Returns on success:** `{assignment = "arm_id", experiment_id = "exp_id", journey_uuid = "uuid"}`
 
 **Usage in Journey:**
 ```
-app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id", true])
+app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id", "experiment_id", true])
 ```
 
 ### post_outcome_for_contact(contact_id, outcome)
@@ -59,7 +58,7 @@ Otherwise, the outcome is accessed via a separate ETL/database integration with 
 
 **Usage in Journey:**
 ```
-app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "@outcome_value"])
+app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "experiment_id", "@outcome_value"])
 ```
 
 ## Arm Journey Contract
@@ -68,7 +67,7 @@ Arm journeys are authored by the experiment operator and are self-contained. Eac
 
 1. Deliver the arm's content/intervention
 2. Collect the outcome (e.g., a rating or response)
-3. Call `post_outcome_for_contact` to record the outcome in Evidential
+3. Call `post_outcome_for_contact` with the appropriate experiment ID to record the outcome in Evidential
 
 ## Development
 

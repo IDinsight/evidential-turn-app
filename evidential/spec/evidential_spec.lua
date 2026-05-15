@@ -17,10 +17,7 @@ describe("evidential", function()
         app_config = {
             enabled = true,
             uuid = "evidential-app-uuid",
-            config = {
-                evidential_api_key = "your-api-key",
-                experiment_id = 'experiment_123'
-            }
+            config = {evidential_api_key = "your-api-key"}
         }
 
         turn.app.update_config(app_config.config)
@@ -44,10 +41,14 @@ describe("evidential", function()
             }
         }
 
-        turn.data.dictionary.set_global("evidential_experiment", {
+        turn.data.dictionary.set_global("evidential_experiment_experiment_123",
+                                        {
             experiment_id = "experiment_123",
             arm_journey_map = {arm_a = "journey-1", arm_b = "journey-2"}
         }, {replace = true})
+        turn.data.dictionary.set_global("evidential_experiment_index", {
+            ["evidential_experiment_experiment_123"] = true
+        }, {append = true})
 
         -- Set up test contact
         global_contact = {
@@ -116,23 +117,30 @@ describe("evidential", function()
             local result = App.on_event(app_config, number, "uninstall", {})
             assert(result == true, "Expected uninstall to return true")
 
-            experiment_data = turn.data.dictionary.get_global(
-                                  "evidential_experiment")
+            local experiment_data = turn.data.dictionary.get_global(
+                                        "evidential_experiment_experiment_123")
+            local experiment_index = turn.data.dictionary.get_global(
+                                         "evidential_experiment_index")
             assert(experiment_data == nil,
                    "Expected experiment data to be deleted from data dictionary")
+            assert(experiment_index == nil,
+                   "Expected experiment index to be deleted from data dictionary")
 
         end)
     end)
 
-    describe("config_changed event", function()
+    describe("config changes on journey_event", function()
         it("should fetch and store experiment config from the Evidential API",
            function()
             local new_config = {
                 uuid = app_config.uuid,
-                config = {
-                    evidential_api_key = "new-api-key",
-                    experiment_id = 'experiment_456'
-                }
+                config = {evidential_api_key = 'new-api-key'}
+            }
+            local journey_data = {
+                function_name = "get_assignment_for_contact",
+                args = {global_contact.details.urn, "experiment_456", true},
+                chat_uuid = "chat-123",
+                contact_uuid = global_contact.uuid
             }
 
             turn.test.mock_http(
@@ -150,16 +158,17 @@ describe("evidential", function()
                 })
 
             turn.app.update_config(new_config.config) -- Ensure config is updated before triggering event
-            local result =
-                App.on_event(new_config, number, "config_changed", {})
-            assert(result == true, "Expected config_changed to return true")
+
+            -- We don't care about the result here, we just want to check that the config was fetched and stored correctly,
+            -- which happens at the start of the journey_event handler
+            App.on_event(new_config, number, "journey_event", journey_data)
 
             local config = turn.app.get_config()
             assert(config.evidential_api_key == "new-api-key",
                    "Expected API key to be updated in config")
 
             local experiment_data = turn.data.dictionary.get_global(
-                                        "evidential_experiment")
+                                        "evidential_experiment_experiment_456")
             assert(experiment_data ~= nil,
                    "Expected experiment data to be set in data dictionary")
             assert(experiment_data.experiment_id == "experiment_456",
@@ -192,10 +201,13 @@ describe("evidential", function()
            function()
             local new_config = {
                 uuid = app_config.uuid,
-                config = {
-                    evidential_api_key = "new-api-key",
-                    experiment_id = 'experiment_456'
-                }
+                config = {evidential_api_key = "new-api-key"}
+            }
+            local journey_data = {
+                function_name = "get_assignment_for_contact",
+                args = {global_contact.details.urn, "experiment_456", true},
+                chat_uuid = "chat-123",
+                contact_uuid = global_contact.uuid
             }
 
             turn.test.mock_http(
@@ -203,19 +215,21 @@ describe("evidential", function()
                 {method = "GET", status = 500, body = "Internal Server Error"})
 
             turn.app.update_config(new_config.config)
-            local result =
-                App.on_event(new_config, number, "config_changed", {})
-            assert(not result,
-                   "Expected config_changed to return falsy on API failure")
+            local status, result = App.on_event(new_config, number,
+                                                "journey_event", journey_data)
+            assert(status == "error", "Expected error status on API failure")
         end)
 
         it("should fail when the API response body is empty/null", function()
             local new_config = {
                 uuid = app_config.uuid,
-                config = {
-                    evidential_api_key = "new-api-key",
-                    experiment_id = 'experiment_456'
-                }
+                config = {evidential_api_key = "new-api-key"}
+            }
+            local journey_data = {
+                function_name = "get_assignment_for_contact",
+                args = {global_contact.details.urn, "experiment_456", true},
+                chat_uuid = "chat-123",
+                contact_uuid = global_contact.uuid
             }
 
             turn.test.mock_http(
@@ -223,20 +237,23 @@ describe("evidential", function()
                 {method = "GET", status = 200, body = "null"})
 
             turn.app.update_config(new_config.config)
-            local result =
-                App.on_event(new_config, number, "config_changed", {})
-            assert(not result,
-                   "Expected config_changed to return falsy on empty response body")
+            local status, result = App.on_event(new_config, number,
+                                                "journey_event", journey_data)
+            assert(status == "error",
+                   "Expected error status on empty response body")
         end)
 
         it("should fail when the API response is missing arm_journey_map",
            function()
             local new_config = {
                 uuid = app_config.uuid,
-                config = {
-                    evidential_api_key = "new-api-key",
-                    experiment_id = 'experiment_456'
-                }
+                config = {evidential_api_key = "new-api-key"}
+            }
+            local journey_data = {
+                function_name = "get_assignment_for_contact",
+                args = {global_contact.details.urn, "experiment_456", true},
+                chat_uuid = "chat-123",
+                contact_uuid = global_contact.uuid
             }
 
             turn.test.mock_http(
@@ -250,20 +267,23 @@ describe("evidential", function()
                 })
 
             turn.app.update_config(new_config.config)
-            local result =
-                App.on_event(new_config, number, "config_changed", {})
-            assert(not result,
-                   "Expected config_changed to return falsy when arm_journey_map missing")
+            local status, result = App.on_event(new_config, number,
+                                                "journey_event", journey_data)
+            assert(status == "error",
+                   "Expected error status when arm_journey_map missing")
         end)
 
         it("should fail when the API response is missing experiment_id",
            function()
             local new_config = {
                 uuid = app_config.uuid,
-                config = {
-                    evidential_api_key = "new-api-key",
-                    experiment_id = 'experiment_456'
-                }
+                config = {evidential_api_key = "new-api-key"}
+            }
+            local journey_data = {
+                function_name = "get_assignment_for_contact",
+                args = {global_contact.details.urn, "experiment_456", true},
+                chat_uuid = "chat-123",
+                contact_uuid = global_contact.uuid
             }
 
             turn.test.mock_http(
@@ -277,10 +297,10 @@ describe("evidential", function()
                 })
 
             turn.app.update_config(new_config.config)
-            local result =
-                App.on_event(new_config, number, "config_changed", {})
-            assert(not result,
-                   "Expected config_changed to return falsy when experiment_id missing")
+            local status, result = App.on_event(new_config, number,
+                                                "journey_event", journey_data)
+            assert(status == "error",
+                   "Expected error status when experiment_id missing")
         end)
 
         it(
@@ -288,10 +308,13 @@ describe("evidential", function()
             function()
                 local new_config = {
                     uuid = app_config.uuid,
-                    config = {
-                        evidential_api_key = "new-api-key",
-                        experiment_id = 'experiment_456'
-                    }
+                    config = {evidential_api_key = "new-api-key"}
+                }
+                local journey_data = {
+                    function_name = "get_assignment_for_contact",
+                    args = {global_contact.details.urn, "experiment_456", true},
+                    chat_uuid = "chat-123",
+                    contact_uuid = global_contact.uuid
                 }
 
                 turn.test.mock_http(
@@ -307,10 +330,11 @@ describe("evidential", function()
                     })
 
                 turn.app.update_config(new_config.config)
-                local result = App.on_event(new_config, number,
-                                            "config_changed", {})
-                assert(not result,
-                       "Expected config_changed to return falsy when journey UUID is unknown")
+                local status, result = App.on_event(new_config, number,
+                                                    "journey_event",
+                                                    journey_data)
+                assert(status == "error",
+                       "Expected error status when journey UUID is unknown")
             end)
     end)
 
@@ -322,7 +346,9 @@ describe("evidential", function()
                 function()
                     local journey_data = {
                         function_name = "get_assignment_for_contact",
-                        args = {global_contact.details.urn, true},
+                        args = {
+                            global_contact.details.urn, "experiment_123", true
+                        },
                         chat_uuid = "chat-123",
                         contact_uuid = global_contact.uuid
                     }
@@ -339,9 +365,20 @@ describe("evidential", function()
                         App.on_event(app_config, number, "journey_event",
                                      journey_data)
 
+                    local experiment_data =
+                        turn.data.dictionary.get_global(
+                            "evidential_experiment_experiment_123")
+
                     local contact = turn.contacts.find({
                         uuid = global_contact.uuid
                     })
+
+                    assert(experiment_data.experiment_id == "experiment_123",
+                           "Expected experiment_id in data dictionary to match API response")
+                    assert(experiment_data.arm_journey_map.arm_a == "journey-1",
+                           "Expected arm_a to map to journey-1 in data dictionary")
+                    assert(experiment_data.arm_journey_map.arm_b == "journey-2",
+                           "Expected arm_b to map to journey-2 in data dictionary")
                     assert(contact.details.experiment_id == "experiment_123",
                            "Expected experiment_id field to be set on contact")
                     assert(contact.details.assignment_arm_id == "arm_a",
@@ -361,7 +398,9 @@ describe("evidential", function()
                 function()
                     local journey_data = {
                         function_name = "get_assignment_for_contact",
-                        args = {global_contact.details.urn, false},
+                        args = {
+                            global_contact.details.urn, "experiment_123", false
+                        },
                         chat_uuid = "chat-123",
                         contact_uuid = global_contact.uuid
                     }
@@ -394,7 +433,7 @@ describe("evidential", function()
             it("should return error when Evidential API fails", function()
                 local journey_data = {
                     function_name = "get_assignment_for_contact",
-                    args = {global_contact.details.urn, false},
+                    args = {global_contact.details.urn, "experiment_123", false},
                     chat_uuid = "chat-123",
                     contact_uuid = global_contact.uuid
                 }
@@ -416,7 +455,7 @@ describe("evidential", function()
             it("should return error when arm_id is not in config", function()
                 local journey_data = {
                     function_name = "get_assignment_for_contact",
-                    args = {global_contact.details.urn, false},
+                    args = {global_contact.details.urn, "experiment_123", false},
                     chat_uuid = "chat-123",
                     contact_uuid = global_contact.uuid
                 }
@@ -445,7 +484,7 @@ describe("evidential", function()
             it("should post outcome to Evidential API", function()
                 local journey_data = {
                     function_name = "post_outcome_for_contact",
-                    args = {global_contact.details.urn, 0.},
+                    args = {global_contact.details.urn, "experiment_123", 0.},
                     chat_uuid = "chat-123",
                     contact_uuid = global_contact.uuid
                 }
@@ -470,7 +509,7 @@ describe("evidential", function()
             it("should return error when Evidential API fails", function()
                 local journey_data = {
                     function_name = "post_outcome_for_contact",
-                    args = {global_contact.details.urn, 0.},
+                    args = {global_contact.details.urn, "experiment_123", 0.},
                     chat_uuid = "chat-123",
                     contact_uuid = global_contact.uuid
                 }
@@ -495,7 +534,7 @@ describe("evidential", function()
             it("should route contact to arm journey", function()
                 local journey_data = {
                     function_name = "route_to_experiment",
-                    args = {global_contact.details.urn},
+                    args = {global_contact.details.urn, "experiment_123"},
                     chat_uuid = "chat-123",
                     contact_uuid = global_contact.uuid
                 }
@@ -523,7 +562,7 @@ describe("evidential", function()
             it("should return error when Evidential API fails", function()
                 local journey_data = {
                     function_name = "route_to_experiment",
-                    args = {global_contact.details.urn},
+                    args = {global_contact.details.urn, "experiment_123"},
                     chat_uuid = "chat-123",
                     contact_uuid = global_contact.uuid
                 }
@@ -545,7 +584,7 @@ describe("evidential", function()
             it("should return error for unknown journey function", function()
                 local journey_data = {
                     function_name = "nonexistent_function",
-                    args = {"arg1"},
+                    args = {"arg1", "experiment_123"},
                     chat_uuid = "chat-123"
                 }
 
@@ -564,14 +603,11 @@ describe("evidential", function()
                 -- mock. The default Turn HTTP mock returns a body without
                 -- experiment_id/arm_journey_map, so set_experiment_config
                 -- validation fails and on_event hits the new error path.
-                turn.app.update_config({
-                    evidential_api_key = "your-api-key",
-                    experiment_id = 'experiment_unmocked'
-                })
+                turn.app.update_config({evidential_api_key = "your-api-key"})
 
                 local journey_data = {
                     function_name = "get_assignment_for_contact",
-                    args = {global_contact.details.urn},
+                    args = {global_contact.details.urn, "experiment_unmocked"},
                     chat_uuid = "chat-123"
                 }
 

@@ -70,7 +70,7 @@ card SendResultsToApp, "SendResultsToApp",
   version: "1",
   uuid: "c8196fdc-27eb-4957-8d44-20a2f813d5f5",
   code_generator: "APP" do
-  app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "@outcome"])
+  app("evidential", "post_outcome_for_contact", ["@contact.whatsapp_id", "your-experiment-id", "@outcome"])
 
   then(ThankYouMessage)
 end

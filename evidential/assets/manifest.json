@@ -5,11 +5,10 @@
     "name": "evidential",
     "title": "Evidential",
     "type": "lua",
-    "version": "0.3.6"
+    "version": "0.4.0"
   },
   "config": {
-    "evidential_api_key": "your-api-key",
-    "experiment_id": "exp_12345"
+    "evidential_api_key": "your-api-key"
   },
   "contact_fields": [
     {

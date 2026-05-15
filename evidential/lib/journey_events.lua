@@ -2,9 +2,9 @@ local turn = require("turn")
 local Functions = {}
 local EVIDENTIAL_API_BASE_URL = "https://api.evidential.dev/v1/experiments"
 
-function Functions.route_to_journey(contact_id, experiment_data, chat_uuid, contact_uuid)
+function Functions.route_to_journey(contact_id, experiment_id, experiment_data, chat_uuid, contact_uuid)
     local result, err = Functions.get_assignment_for_contact(
-        contact_id, experiment_data, contact_uuid)
+        contact_id, experiment_id, experiment_data, contact_uuid)
     if not result then
         turn.logger.error(err)
         return "error", err
@@ -31,10 +31,8 @@ function Functions.route_to_journey(contact_id, experiment_data, chat_uuid, cont
     end
 end
 
-function Functions.get_assignment_for_contact(contact_id, experiment_data, contact_uuid)
+function Functions.get_assignment_for_contact(contact_id, experiment_id, experiment_data, contact_uuid)
     local config = turn.app.get_config()
-
-    local experiment_id = experiment_data.experiment_id
 
     local url = string.format("%s/%s/assignments/%s",
                               EVIDENTIAL_API_BASE_URL,
@@ -101,10 +99,8 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
     end
 end
 
-function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data, contact_uuid)
+function Functions.post_outcome_for_contact(contact_id, experiment_id, outcome, experiment_data, contact_uuid)
     local config = turn.app.get_config()
-
-    local experiment_id = experiment_data.experiment_id
 
     local url = string.format("%s/%s/assignments/%s/outcome",
                               EVIDENTIAL_API_BASE_URL,
