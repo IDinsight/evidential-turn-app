@@ -25,7 +25,7 @@ describe("evidential", function()
 
         turn.app.update_config(app_config.config)
 
-        number = {id = "123", urn = "1234567890"}
+        number = {id = "123"}
 
         -- Define a mock turn.data.dictionary for testing since the real one is not available
         -- in this test environment
@@ -357,7 +357,7 @@ describe("evidential", function()
                 end)
 
             it(
-                "should not update contact fields when the update_config is set to false",
+                "should not update contact fields when the update_contact_fields is set to false",
                 function()
                     local journey_data = {
                         function_name = "get_assignment_for_contact",
@@ -409,7 +409,7 @@ describe("evidential", function()
 
                 local status, result = App.on_event(app_config, number,
                                                     "journey_event",
-                                                    journey_data) --- IGNORE ---
+                                                    journey_data)
                 assert(status == "error", "Expected error status on API failure")
             end)
 
