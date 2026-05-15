@@ -15,9 +15,9 @@ function Functions.redact_config_secrets(app_config)
 end
 
 --[[ Validates the app's config and sets the experiment config in the data dictionary. ]]
-function Functions.set_experiment_config(app_config)
+function Functions.set_experiment_config(app_config, experiment_id)
     local url = string.format("%s/integrations/experiments/%s/turn-app-config",
-                              EVIDENTIAL_API_BASE_URL, app_config.experiment_id)
+                              EVIDENTIAL_API_BASE_URL, experiment_id)
     local body, status_code = turn.http.request({
         url = url,
         method = "GET",
@@ -63,12 +63,21 @@ function Functions.set_experiment_config(app_config)
         end
     end
 
-    turn.data.dictionary.set_global("evidential_experiment", {
+    turn.data.dictionary.set_global(string.format("evidential_experiment_%s",
+                                                  experiment_config.experiment_id),
+                                    {
         experiment_id = experiment_config.experiment_id,
         experiment_name = experiment_config.experiment_name,
         arm_journey_map = experiment_config.arm_journey_map
     }, {replace = true})
 
+    turn.data.dictionary.set_global("evidential_experiment_index", {
+        "evidential_experiment_" .. experiment_config.experiment_id
+    }, {append = true})
+
+    local logsafe = Functions.redact_config_secrets(app_config)
+    turn.logger.info("Fetched experiment config with app config: " ..
+                         turn.json.encode(logsafe))
     turn.logger.info("Config validated: experiment=" ..
                          experiment_config.experiment_id .. ", arm_journey_map=" ..
                          turn.json.encode(experiment_config.arm_journey_map))

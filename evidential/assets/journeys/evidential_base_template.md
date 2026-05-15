@@ -69,7 +69,7 @@ card RouteToExperiment, "RouteToExperiment",
   version: "1",
   uuid: "3fbb9478-641e-4339-84cf-d08aebd29d08",
   code_generator: "APP" do
-  ref_RouteToExperiment = app("evidential", "route_to_experiment", ["@contact.whatsapp_id"])
+  ref_RouteToExperiment = app("evidential", "route_to_experiment", ["@contact.whatsapp_id", "your-experiment-id"])
   then(ErrorMessage when ref_RouteToExperiment.success == false)
 end
 

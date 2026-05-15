@@ -18,6 +18,10 @@ function Functions.install()
     local success_subscriptions, _ = turn.app.set_contact_subscriptions(
                                          contact_subscriptions)
 
+    -- Make experiment config index
+    turn.data.dictionary.set_global("evidential_experiment_index", {},
+                                    {replace = true})
+
     if not success_config then
         turn.logger.error("Failed to update config")
         return false
@@ -35,7 +39,14 @@ end
 function Functions.uninstall()
     -- Clean up subscriptions and data dictionary
     turn.app.set_contact_subscriptions({})
-    turn.data.dictionary.delete_global("evidential_experiment")
+    experiment_index = turn.data.dictionary.get_global(
+                           "evidential_experiment_index")
+    if experiment_index then
+        for _, key in pairs(experiment_index) do
+            turn.data.dictionary.delete_global(key)
+        end
+    end
+    turn.data.dictionary.delete_global("evidential_experiment_index")
     turn.logger.info("App uninstalled")
     return true
 end
