@@ -47,7 +47,7 @@ describe("evidential", function()
             arm_journey_map = {arm_a = "journey-1", arm_b = "journey-2"}
         }, {replace = true})
         turn.data.dictionary.set_global("evidential_experiment_index", {
-            "evidential_experiment_experiment_123"
+            ["evidential_experiment_experiment_123"] = true
         }, {append = true})
 
         -- Set up test contact

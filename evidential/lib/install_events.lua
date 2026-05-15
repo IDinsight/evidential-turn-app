@@ -39,15 +39,15 @@ end
 function Functions.uninstall()
     -- Clean up subscriptions and data dictionary
     turn.app.set_contact_subscriptions({})
-    experiment_index = turn.data.dictionary.get_global(
-                           "evidential_experiment_index")
+    local experiment_index = turn.data.dictionary.get_global(
+                                 "evidential_experiment_index")
     if experiment_index then
-        for _, key in pairs(experiment_index) do
+        for key, _ in pairs(experiment_index) do
             turn.data.dictionary.delete_global(key)
         end
     end
     turn.data.dictionary.delete_global("evidential_experiment_index")
-    turn.logger.info("App uninstalled")
+    turn.logger.info("App uninstalled successfully")
     return true
 end
 

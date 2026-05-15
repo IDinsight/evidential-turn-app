@@ -70,10 +70,15 @@ function Functions.set_experiment_config(app_config, experiment_id)
         experiment_name = experiment_config.experiment_name,
         arm_journey_map = experiment_config.arm_journey_map
     }, {replace = true})
+    turn.logger.info("Experiment config set successfully for experiment " ..
+                         experiment_config.experiment_id)
 
     turn.data.dictionary.set_global("evidential_experiment_index", {
-        "evidential_experiment_" .. experiment_config.experiment_id
+        [string.format("evidential_experiment_%s",
+                       experiment_config.experiment_id)] = true
     }, {append = true})
+    turn.logger.info("Experiment config added to index for experiment " ..
+                         experiment_config.experiment_id)
 
     local logsafe = Functions.redact_config_secrets(app_config)
     turn.logger.info("Fetched experiment config with app config: " ..

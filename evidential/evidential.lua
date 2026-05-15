@@ -42,6 +42,7 @@ function App.on_event(app, number, event, data)
         local experiment_data = turn.data.dictionary.get_global(string.format(
                                                                     "evidential_experiment_%s",
                                                                     experiment_id))
+
         if not experiment_data then
             local success = ConfigChangedEvents.set_experiment_config(config,
                                                                       experiment_id)
@@ -53,7 +54,16 @@ function App.on_event(app, number, event, data)
                 turn.logger
                     .error(msg .. ": " .. turn.json.encode(logged_config))
                 return "error", msg
+            else
+                experiment_data = turn.data.dictionary.get_global(string.format(
+                                                                      "evidential_experiment_%s",
+                                                                      experiment_id))
             end
+        else
+            turn.logger.info(
+                "Fetched experiment data from dictionary for experiment " ..
+                    tostring(experiment_id) .. ": " ..
+                    turn.json.encode(experiment_data))
         end
 
         if function_name == "route_to_experiment" then

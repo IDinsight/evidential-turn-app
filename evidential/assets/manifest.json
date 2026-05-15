@@ -3,9 +3,9 @@
     "dependencies": [],
     "description": "Evidential app for testing integration with the Evidential experiments platform",
     "name": "evidential",
-    "title": "Evidential-pr",
+    "title": "Evidential",
     "type": "lua",
-    "version": "0.4.0-dev.1"
+    "version": "0.4.0"
   },
   "config": {
     "evidential_api_key": "your-api-key"
