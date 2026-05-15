@@ -54,7 +54,6 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
             return nil, "Invalid response: missing assignment data"
         end
         local arm_id = response_body.assignment.arm_id
-        
         -- Check that the arm_id from the API response is one of the arms defined in the 
         -- experiment config
         local arm_journey_map = experiment_data.arm_journey_map
@@ -70,7 +69,6 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
         end
 
         local journey_uuid = arm_journey_map[arm_id]
-        
         local result =  {
             arm_id = arm_id,
             experiment_id = experiment_id,
@@ -79,19 +77,24 @@ function Functions.get_assignment_for_contact(contact_id, experiment_data, conta
 
         -- Update contact fields with experiment assignment info for use in Stacks and other journey contexts
         if contact_uuid ~= nil then
-            local contact, found = turn.contacts.get(contact_uuid)
-            
+            local contact, found = turn.contacts.get(contact_uuid)            
             if found then
                 turn.contacts.update_contact_details(contact, {
                     assignment_arm_id = result.arm_id,
                     experiment_id = result.experiment_id,
                     assignment_outcome_recorded = false
                 })
+                turn.logger.info("Updated contact " .. tostring(contact_uuid) ..
+                    " to arm " .. tostring(result.arm_id) ..
+                    " for experiment " .. tostring(result.experiment_id))
             else
                 turn.logger.warning("Contact not found for uuid: " .. tostring(contact_uuid) ..
                     ", skipping profile update")
             end
+        else
+            turn.logger.warning("Contact UUID not provided, skipping profile update")
         end
+
         return result
     else
         return nil, "Failed to get assignment: " .. (body or "unknown error")
@@ -133,6 +136,8 @@ function Functions.post_outcome_for_contact(contact_id, outcome, experiment_data
                 turn.logger.warning("Contact not found for uuid: " .. tostring(contact_uuid) ..
                     ", skipping profile update")
             end
+        else
+            turn.logger.warning("Contact UUID not provided, skipping profile update")
         end
         return response_body
     else
