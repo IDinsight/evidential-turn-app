@@ -14,8 +14,65 @@ function Functions.redact_config_secrets(app_config)
     return logsafe
 end
 
+local function get_current_journeys()
+    local journeys = turn.journeys.list()
+    local journeys_snapshot = {}
+    for _, journey in ipairs(journeys) do
+        table.insert(journeys_snapshot,
+                     {uuid = journey.uuid, name = journey.name})
+    end
+    table.sort(journeys_snapshot, function(a, b) return a.uuid < b.uuid end)
+    return journeys_snapshot
+end
+
+function Functions.journeys_changed()
+    local stored_snapshot =
+        turn.data.dictionary.get_global("journeys_snapshot") or {}
+    local current_snapshot = get_current_journeys()
+    if turn.json.encode(stored_snapshot) ~= turn.json.encode(current_snapshot) then
+        turn.logger.info("Journey list changed; updating global snapshot")
+        turn.data.dictionary.set_global("journeys_snapshot", current_snapshot)
+        return true
+    end
+    turn.logger
+        .info("No changes in journeys; global snapshot remains unchanged")
+    return false
+end
+
+function Functions.notify_refresh_journeys(app_config)
+    -- Notify Evidential webhook about the journey changes
+    local url = string.format("%s/integrations/turn/webhook/%s",
+                              EVIDENTIAL_API_BASE_URL,
+                              tostring(app_config.evidential_webhook_id))
+    local body, status_code = turn.http.request({
+        url = url,
+        method = "POST",
+        headers = {
+            ["Webhook-Token"] = tostring(
+                app_config.evidential_webhook_auth_token)
+        }
+    })
+
+    if status_code >= 200 and status_code < 300 then
+        turn.logger.info(
+            "Evidential webhook notified successfully for refresh-journeys")
+        return true
+    else
+        turn.logger.error(
+            "Failed to notify Evidential webhook for refresh-journeys: HTTP " ..
+                tostring(status_code) .. " - " .. tostring(body))
+        return nil,
+               "Failed to notify Evidential webhook for refresh-journeys: HTTP " ..
+                   tostring(status_code)
+    end
+end
+
 --[[ Validates the app's config and sets the experiment config in the data dictionary. ]]
 function Functions.set_experiment_config(app_config, experiment_id)
+    -- notify Evidential webhook to refresh journeys in case the 
+    -- journey was recently created or updated
+    Functions.notify_refresh_journeys(app_config)
+
     local url = string.format("%s/integrations/experiments/%s/turn-app-config",
                               EVIDENTIAL_API_BASE_URL, experiment_id)
     local body, status_code = turn.http.request({

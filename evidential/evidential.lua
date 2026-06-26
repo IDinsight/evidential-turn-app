@@ -19,6 +19,17 @@ local ConfigChangedEvents = require("lib/config_changed_events")
 function App.on_event(app, number, event, data)
     turn.logger.info("on_event: " .. event)
 
+    local config = turn.app.get_config()
+
+    -- 
+    local are_journeys_changed = ConfigChangedEvents.journeys_changed()
+    if are_journeys_changed then
+        turn.logger.info("Journeys have changed since last snapshot")
+        ConfigChangedEvents.notify_refresh_journeys(config)
+    else
+        turn.logger.info("No changes in journeys since last snapshot")
+    end
+
     if event == "install" then
         return InstallEvents.install()
 
@@ -34,8 +45,8 @@ function App.on_event(app, number, event, data)
         local function_name = data.function_name
         local args = data.args
 
-        -- Always update the config and experiment data from the data dictionary at the start of a journey event in case they have changed since the last event
-        local config = turn.app.get_config()
+        -- Always update the config, journeys snapshot, and experiment data from the data dictionary 
+        -- at the start of a journey event in case they have changed since the last event
         local experiment_id = args[2]
 
         -- Look up experiment data from the global data dictionary

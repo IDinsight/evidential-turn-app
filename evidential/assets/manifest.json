@@ -5,10 +5,12 @@
     "name": "evidential",
     "title": "Evidential",
     "type": "lua",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "config": {
-    "evidential_api_key": "your-api-key"
+    "evidential_api_key": "your-api-key",
+    "evidential_webhook_auth_token": "your-webhook-auth-token",
+    "evidential_webhook_id": "your-webhook-id"
   },
   "contact_fields": [
     {
