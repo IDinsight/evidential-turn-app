@@ -21,7 +21,8 @@ function App.on_event(app, number, event, data)
 
     local config = turn.app.get_config()
 
-    -- 
+    -- Right now, we don't make use of the return values from the 
+    -- notify_journeys_changed event 
     local are_journeys_changed = ConfigChangedEvents.journeys_changed()
     if are_journeys_changed then
         turn.logger.info("Journeys have changed since last snapshot")

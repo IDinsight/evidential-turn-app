@@ -1,6 +1,7 @@
 local turn = require("turn")
 local Functions = {}
 local EVIDENTIAL_API_BASE_URL = "https://api.evidential.dev/v1"
+local JOURNEYS_CHECK_INTERVAL_SECS = 300 -- 5 mins
 
 --[[ Returns a redacted copy of the config so it can be used for logging. ]]
 function Functions.redact_config_secrets(app_config)
@@ -10,6 +11,11 @@ function Functions.redact_config_secrets(app_config)
         local key = tostring(logsafe.evidential_api_key)
         local shadow = string.sub(key, 1, 8) .. "****"
         logsafe.evidential_api_key = shadow
+    end
+    if logsafe.evidential_webhook_auth_token then
+        local token = tostring(logsafe.evidential_webhook_auth_token)
+        local shadow = string.sub(token, 1, 8) .. "****"
+        logsafe.evidential_webhook_auth_token = shadow
     end
     return logsafe
 end
@@ -21,11 +27,23 @@ local function get_current_journeys()
         table.insert(journeys_snapshot,
                      {uuid = journey.uuid, name = journey.name})
     end
+    -- Sort the journeys snapshot by UUID to ensure consistent ordering for comparison
     table.sort(journeys_snapshot, function(a, b) return a.uuid < b.uuid end)
     return journeys_snapshot
 end
 
 function Functions.journeys_changed()
+    local last_checked = turn.data.dictionary
+                             .get_global("journeys_last_checked")
+    local current_time = os.time()
+    if last_checked and (current_time - last_checked) <
+        JOURNEYS_CHECK_INTERVAL_SECS then
+        turn.logger.info("Journeys check skipped; last checked " ..
+                             tostring(current_time - last_checked) ..
+                             " seconds ago")
+        return false
+    end
+
     local stored_snapshot =
         turn.data.dictionary.get_global("journeys_snapshot") or {}
     local current_snapshot = get_current_journeys()
@@ -71,7 +89,6 @@ end
 function Functions.set_experiment_config(app_config, experiment_id)
     -- notify Evidential webhook to refresh journeys in case the 
     -- journey was recently created or updated
-    Functions.notify_refresh_journeys(app_config)
 
     local url = string.format("%s/integrations/experiments/%s/turn-app-config",
                               EVIDENTIAL_API_BASE_URL, experiment_id)
