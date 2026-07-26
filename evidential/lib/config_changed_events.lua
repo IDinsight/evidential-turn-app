@@ -59,7 +59,7 @@ end
 
 function Functions.notify_refresh_journeys(app_config)
     -- Notify Evidential webhook about the journey changes
-    local url = string.format("%s/integrations/turn/webhook/%s",
+    local url = string.format("%s/integrations/turn/webhook/%s/config-updated",
                               EVIDENTIAL_API_BASE_URL,
                               tostring(app_config.evidential_webhook_id))
     local body, status_code = turn.http.request({

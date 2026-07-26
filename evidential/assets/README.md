@@ -6,7 +6,7 @@ An app to integrate with the [Evidential experiments platform](https://app.evide
 ## Quickstart
 0. Create a base Journey to onboard contacts for your experiment, and separate Journeys for each arm of a potential experiment, following the [Arm Journey Contract](#arm-journey-contract).
 1. Generate an API Key for Turn.io from Settings -> API and Webhooks
-2. Go to the [Evidential experiments platform](https://app.evidential.dev/), and add this API key on the "Integrations" page
+2. Go to the [Evidential experiments platform](https://app.evidential.dev/), and add this API key on the "Integrations" page. Note down the generated Evidential Webhook ID and Webhook Token for this integration, copy them to the Turn.io app configuration later.
 3. Create an experiment on the [Evidential experiments platform](https://app.evidential.dev/) and note down the Evidential API key and experiment ID for this experiment from the integration guide.
 4. Also in the integration guide, map the arms in your experiment to corresponding journeys on Turn.io (see [Arm Journey Contract](#arm-journey-contract) section for details on arm journey requirements).
 5. Back on Turn.io, create a new Turn.io app and add the `evidential` app as a dependency.
@@ -20,6 +20,8 @@ An app to integrate with the [Evidential experiments platform](https://app.evide
 
 The app requires the following configuration parameters (set in Turn.io UI):
 - `Evidential API Key`: API key for authenticating with Evidential API
+- `Evidential Webhook ID`: Webhook ID for the Evidential integration (from the Evidential experiments platform)
+- `Evidential Webhook Token`: Webhook token for the Evidential integration (from the Evidential experiments platform)
 
 
 ## Journey Functions
