@@ -2,6 +2,7 @@ local lester = require('lester')
 local turn = require('turn')
 local json = turn.json -- JSON encoding/decoding from turn module
 local App = require('evidential')
+local ConfigChangedEvents = require('lib/config_changed_events')
 
 local describe, it, before = lester.describe, lester.it, lester.before
 
@@ -620,6 +621,242 @@ describe("evidential", function()
                            "Invalid experiment config. Check that you have a valid API key and experiment ID.",
                        "Expected specific error message; got: " ..
                            tostring(result))
+            end)
+    end)
+
+    describe("config_changed_events (unit)", function()
+
+        describe("redact_config_secrets", function()
+            it("should redact both the api key and the webhook auth token",
+               function()
+                local raw = {
+                    evidential_api_key = "abcdefgh-secret-key",
+                    evidential_webhook_auth_token = "12345678-secret-token",
+                    evidential_webhook_id = "webhook-123"
+                }
+                local safe = ConfigChangedEvents.redact_config_secrets(raw)
+
+                assert(safe.evidential_api_key == "abcdefgh****",
+                       "Expected api key to be redacted to first 8 chars + ****; got: " ..
+                           tostring(safe.evidential_api_key))
+                assert(safe.evidential_webhook_auth_token == "12345678****",
+                       "Expected webhook auth token to be redacted; got: " ..
+                           tostring(safe.evidential_webhook_auth_token))
+                assert(safe.evidential_webhook_id == "webhook-123",
+                       "Expected non-secret field to be preserved")
+                assert(raw.evidential_api_key == "abcdefgh-secret-key",
+                       "Expected original config to be left unmutated")
+                assert(raw.evidential_webhook_auth_token ==
+                           "12345678-secret-token",
+                       "Expected original webhook token to be left unmutated")
+            end)
+        end)
+
+        describe("journeys_changed", function()
+            it(
+                "should return true and write both globals when the journey list changed",
+                function()
+                    local changed = ConfigChangedEvents.journeys_changed()
+                    assert(changed == true,
+                           "Expected journeys_changed to report a change on first run")
+
+                    local snapshot = turn.data.dictionary.get_global(
+                                         "journeys_snapshot")
+                    local last_checked =
+                        turn.data.dictionary.get_global("journeys_last_checked")
+                    assert(snapshot ~= nil,
+                           "Expected journeys_snapshot global to be written")
+                    assert(snapshot.journeys ~= nil and #snapshot.journeys > 0,
+                           "Expected the snapshot to contain the current journeys")
+                    assert(last_checked ~= nil and
+                               last_checked.last_snapshot_time ~= nil,
+                           "Expected journeys_last_checked timestamp to be written")
+                end)
+
+            it(
+                "should return false and not update the timestamp when the journey list is unchanged",
+                function()
+                    ConfigChangedEvents.journeys_changed()
+
+                    local old_time = os.time() - 1000
+                    turn.data.dictionary.set_global("journeys_last_checked", {
+                        last_snapshot_time = old_time
+                    })
+
+                    local changed = ConfigChangedEvents.journeys_changed()
+                    assert(changed == false,
+                           "Expected journeys_changed to report no change for an identical journey list")
+
+                    local last_checked =
+                        turn.data.dictionary.get_global("journeys_last_checked")
+                    assert(last_checked.last_snapshot_time == old_time,
+                           "Expected journeys_last_checked to remain unchanged when nothing changed")
+                end)
+
+            it(
+                "should skip the check (return false) when checked within the throttle interval",
+                function()
+                    turn.data.dictionary.set_global("journeys_last_checked", {
+                        last_snapshot_time = os.time()
+                    })
+
+                    local changed = ConfigChangedEvents.journeys_changed()
+                    assert(changed == false,
+                           "Expected journeys_changed to skip within the throttle interval")
+                    assert(
+                        turn.data.dictionary.get_global("journeys_snapshot") ==
+                            nil,
+                        "Expected no snapshot to be written when the check is throttled")
+                end)
+        end)
+
+        describe("notify_refresh_journeys", function()
+            it("should POST to the webhook and return true on a 2xx response",
+               function()
+                local app_cfg = {
+                    evidential_webhook_id = "wh-123",
+                    evidential_webhook_auth_token = "secret-token"
+                }
+
+                turn.test.mock_http("webhook/wh%-123/config%-updated", {
+                    method = "POST",
+                    status = 200,
+                    body = json.encode({status = "ok"})
+                })
+
+                local ok = ConfigChangedEvents.notify_refresh_journeys(app_cfg)
+                assert(ok == true,
+                       "Expected notify_refresh_journeys to return true on 2xx")
+
+                local requests = turn.test.get_http_requests()
+                local found = false
+                for _, req in ipairs(requests) do
+                    if req.method == "POST" and
+                        req.url:find("webhook/wh-123/config-updated", 1, true) then
+                        found = true
+                    end
+                end
+                assert(found,
+                       "Expected a POST to the config-updated webhook URL: " ..
+                           json.encode(requests))
+            end)
+
+            it("should return nil and an error message on a non-2xx response",
+               function()
+                local app_cfg = {
+                    evidential_webhook_id = "wh-123",
+                    evidential_webhook_auth_token = "secret-token"
+                }
+
+                turn.test.mock_http("webhook/wh%-123/config%-updated", {
+                    method = "POST",
+                    status = 500,
+                    body = "Internal Server Error"
+                })
+
+                local ok, err = ConfigChangedEvents.notify_refresh_journeys(
+                                    app_cfg)
+                assert(ok == nil,
+                       "Expected notify_refresh_journeys to return nil on failure")
+                assert(err ==
+                           "Failed to notify Evidential webhook for refresh-journeys: HTTP 500",
+                       "Expected the HTTP 500 error message; got: " ..
+                           tostring(err))
+            end)
+        end)
+
+        describe("sync_config", function()
+            it(
+                "should preserve admin-set values and fill missing keys from the manifest",
+                function()
+                    turn.app.update_config({evidential_api_key = "admin-key"})
+
+                    local ok = ConfigChangedEvents.sync_config()
+                    assert(ok == true, "Expected sync_config to return true")
+
+                    local config = turn.app.get_config()
+                    assert(config.evidential_api_key == "admin-key",
+                           "Expected the admin-set api key to take precedence over the manifest default")
+                    assert(config.evidential_webhook_id == "your-webhook-id",
+                           "Expected the missing webhook id to be filled from the manifest")
+                    assert(config.evidential_webhook_auth_token ==
+                               "your-webhook-auth-token",
+                           "Expected the missing webhook auth token to be filled from the manifest")
+                end)
+        end)
+    end)
+
+    describe("config_changed event", function()
+        local function webhook_was_notified()
+            for _, req in ipairs(turn.test.get_http_requests()) do
+                local url = req.url or ""
+                if req.method == "POST" and url:find("config-updated", 1, true) then
+                    return true
+                end
+            end
+            return false
+        end
+
+        it(
+            "should notify the refresh-journeys webhook when the journey list has changed",
+            function()
+                turn.app.update_config({
+                    evidential_api_key = "your-api-key",
+                    evidential_webhook_id = "wh-123",
+                    evidential_webhook_auth_token = "secret-token"
+                })
+                turn.test.mock_http("webhook/wh%-123/config%-updated", {
+                    method = "POST",
+                    status = 200,
+                    body = json.encode({status = "ok"})
+                })
+
+                local result = App.on_event(app_config, number,
+                                            "config_changed", {})
+                assert(result == true, "Expected config_changed to return true")
+                assert(webhook_was_notified(),
+                       "Expected the refresh-journeys webhook to be notified: " ..
+                           json.encode(turn.test.get_http_requests()))
+            end)
+
+        it("should not notify the webhook when the journeys check is throttled",
+           function()
+            turn.app.update_config({
+                evidential_api_key = "your-api-key",
+                evidential_webhook_id = "wh-123",
+                evidential_webhook_auth_token = "secret-token"
+            })
+
+            turn.data.dictionary.set_global("journeys_last_checked",
+                                            {last_snapshot_time = os.time()})
+
+            local result =
+                App.on_event(app_config, number, "config_changed", {})
+            assert(result == true, "Expected config_changed to return true")
+            assert(not webhook_was_notified(),
+                   "Expected no webhook notification when the check is throttled")
+        end)
+
+        it(
+            "should sync config (admin values win, missing keys filled) and return true",
+            function()
+                turn.app.update_config({evidential_api_key = "admin-key"})
+                turn.test.mock_http("webhook/[^/]+/config%-updated", {
+                    method = "POST",
+                    status = 200,
+                    body = json.encode({status = "ok"})
+                })
+
+                local result = App.on_event(app_config, number,
+                                            "config_changed", {})
+                assert(result == true,
+                       "Expected config_changed to return true on success")
+
+                local config = turn.app.get_config()
+                assert(config.evidential_api_key == "admin-key",
+                       "Expected the admin api key to be preserved after sync")
+                assert(config.evidential_webhook_id == "your-webhook-id",
+                       "Expected the manifest webhook id to be filled during sync")
             end)
     end)
 end)

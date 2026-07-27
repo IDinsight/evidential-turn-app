@@ -4,7 +4,7 @@ local JourneyEvents = require("lib/journey_events")
 local InstallEvents = require("lib/install_events")
 local ConfigChangedEvents = require("lib/config_changed_events")
 
-function App.check_journeys_changed()
+function App._check_journeys_changed()
     local are_journeys_changed = ConfigChangedEvents.journeys_changed()
     if are_journeys_changed then
         turn.logger.info("Journeys have changed since last snapshot")
@@ -31,16 +31,6 @@ end
 function App.on_event(app, number, event, data)
     turn.logger.info("on_event: " .. event)
 
-    -- if event ~= "install" and event ~= "uninstall" and event ~= "upgrade" and event ~= "downgrade" then
-    --     -- For all events except install/uninstall, we need to ensure that the app config is valid
-    --     local config = turn.app.get_config()
-    --     if not config.evidential_api_key or not config.evidential_webhook_id or not config.evidential_webhook_auth_token then
-    --         local msg = "Evidential app configuration is missing required fields. Please ensure that 'evidential_api_key', 'evidential_webhook_id', and 'evidential_webhook_auth_token' are set in the app configuration."
-    --         turn.logger.error(msg)
-    --         return "error", msg
-    --     end
-    -- end
-
     if event == "install" then
         return InstallEvents.install()
 
@@ -58,12 +48,12 @@ function App.on_event(app, number, event, data)
             turn.logger.error("Failed to sync config: " .. tostring(err))
             return "error", "Failed to sync config: " .. tostring(err)
         end
-        App.check_journeys_changed()
+        App._check_journeys_changed()
         return true
 
     elseif event == "journey_event" then
 
-        App.check_journeys_changed()
+        App._check_journeys_changed()
 
         local config = turn.app.get_config()
         local function_name = data.function_name
