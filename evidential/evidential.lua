@@ -4,6 +4,16 @@ local JourneyEvents = require("lib/journey_events")
 local InstallEvents = require("lib/install_events")
 local ConfigChangedEvents = require("lib/config_changed_events")
 
+function App._check_journeys_changed()
+    local are_journeys_changed = ConfigChangedEvents.journeys_changed()
+    if are_journeys_changed then
+        turn.logger.info("Journeys have changed since last snapshot")
+        local config = turn.app.get_config()
+        ConfigChangedEvents.notify_refresh_journeys(config)
+    else
+        turn.logger.info("No changes in journeys since last snapshot")
+    end
+end
 --[[
   Main entry point for all app events.
 
@@ -15,6 +25,8 @@ local ConfigChangedEvents = require("lib/config_changed_events")
   - journey_event: Called from Journey app() blocks
   - http_request: Called when webhook receives HTTP request
   - get_app_info_markdown: Return documentation to display in UI
+  - upgrade: Called when app is upgraded to a new version
+  - downgrade: Called when app is downgraded to a previous version
 ]]
 function App.on_event(app, number, event, data)
     turn.logger.info("on_event: " .. event)
@@ -30,12 +42,25 @@ function App.on_event(app, number, event, data)
         turn.logger.info("Contact changed: " .. contact.uuid)
         return true
 
+    elseif event == "config_changed" then
+        local success, err = ConfigChangedEvents.sync_config()
+        if not success then
+            turn.logger.error("Failed to sync config: " .. tostring(err))
+            return "error", "Failed to sync config: " .. tostring(err)
+        end
+        App._check_journeys_changed()
+        return true
+
     elseif event == "journey_event" then
+
+        App._check_journeys_changed()
+
+        local config = turn.app.get_config()
         local function_name = data.function_name
         local args = data.args
 
-        -- Always update the config and experiment data from the data dictionary at the start of a journey event in case they have changed since the last event
-        local config = turn.app.get_config()
+        -- Always update the config, journeys snapshot, and experiment data from the data dictionary 
+        -- at the start of a journey event in case they have changed since the last event
         local experiment_id = args[2]
 
         -- Look up experiment data from the global data dictionary
@@ -126,8 +151,10 @@ function App.on_event(app, number, event, data)
 
     elseif event == "upgrade" then
         return true
+
     elseif event == "downgrade" then
         return true
+
     else
         turn.logger.warning("Unknown event: " .. event)
         return false
