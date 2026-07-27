@@ -36,20 +36,29 @@ function Functions.journeys_changed()
     local last_checked = turn.data.dictionary
                              .get_global("journeys_last_checked")
     local current_time = os.time()
-    if last_checked and (current_time - last_checked) <
+    if last_checked and (current_time - last_checked.last_snapshot_time) <
         JOURNEYS_CHECK_INTERVAL_SECS then
         turn.logger.info("Journeys check skipped; last checked " ..
-                             tostring(current_time - last_checked) ..
+                             tostring(
+                                 current_time - last_checked.last_snapshot_time) ..
                              " seconds ago")
         return false
     end
 
     local stored_snapshot =
-        turn.data.dictionary.get_global("journeys_snapshot") or {}
+        turn.data.dictionary.get_global("journeys_snapshot") or
+            {["journeys"] = {}}
     local current_snapshot = get_current_journeys()
-    if turn.json.encode(stored_snapshot) ~= turn.json.encode(current_snapshot) then
+    local current_json = turn.json.encode(current_snapshot)
+    if turn.json.encode(stored_snapshot["journeys"]) ~= current_json then
         turn.logger.info("Journey list changed; updating global snapshot")
-        turn.data.dictionary.set_global("journeys_snapshot", current_snapshot)
+        turn.data.dictionary.set_global("journeys_snapshot",
+                                        {["journeys"] = current_snapshot},
+                                        {replace = true})
+        turn.logger.info("Updating last checked timestamp for journeys")
+        turn.data.dictionary.set_global("journeys_last_checked",
+                                        {last_snapshot_time = current_time})
+        turn.logger.info("Journeys snapshot updated successfully")
         return true
     end
     turn.logger
@@ -160,6 +169,27 @@ function Functions.set_experiment_config(app_config, experiment_id)
     turn.logger.info("Config validated: experiment=" ..
                          experiment_config.experiment_id .. ", arm_journey_map=" ..
                          turn.json.encode(experiment_config.arm_journey_map))
+    return true
+end
+
+function Functions.sync_config()
+    local manifest_json = turn.assets.load("manifest.json")
+    local manifest = turn.json.decode(manifest_json)
+
+    local existing_config = turn.app.get_config()
+
+    local merged = {}
+    for key, value in pairs(existing_config or {}) do
+        merged[key] = value -- keep values the admin already set
+    end
+    for key, value in pairs(manifest.config or {}) do
+        if merged[key] == nil then merged[key] = value end -- fill only missing keys
+    end
+
+    -- Set default config values
+    local success_config, _ = turn.app.update_config(merged)
+
+    turn.logger.info("App config synced successfully")
     return true
 end
 

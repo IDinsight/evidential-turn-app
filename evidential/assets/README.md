@@ -26,7 +26,7 @@ The app requires the following configuration parameters (set in Turn.io UI):
 
 ## Journey Functions
 
-### route_to_experiment(contact_id)
+### route_to_experiment(contact_id, experiment_id)
 
 Used by the installed journey. Handles the full routing flow:
 1. Calls Evidential API to get the contact's arm assignment for the input experiment ID
@@ -34,7 +34,7 @@ Used by the installed journey. Handles the full routing flow:
 3. Updates the contact's profile fields (`assignment_arm_id`, `experiment_id`)
 4. Starts the arm journey via `turn.journeys.start()`
 
-This function is called automatically by the installed Evidential Experiment journey.
+This function is called automatically by the installed Evidential Experiment Base journey.
 
 **Usage in Journey:**
 ```
@@ -42,7 +42,7 @@ app("evidential", "route_to_experiment", ["@contact.whatsapp_id", "experiment_id
 ```
 
 
-### get_assignment_for_contact(contact_id, update_contact_fields)
+### get_assignment_for_contact(contact_id, experiment_id, update_contact_fields)
 
 Returns the contact's arm assignment for a given experiment ID without routing, and optionally updates the contact's profile fields (by default, `update_contact_fields` is `true`). For custom journeys that want to handle routing themselves.
 
@@ -53,7 +53,7 @@ Returns the contact's arm assignment for a given experiment ID without routing, 
 app("evidential", "get_assignment_for_contact", ["@contact.whatsapp_id", "experiment_id", true])
 ```
 
-### post_outcome_for_contact(contact_id, outcome)
+### post_outcome_for_contact(contact_id, experiment_id, outcome)
 
 Posts the outcome for a contact's experiment assignment back to Evidential. This is only relevant for bandit experiments where the outcome is collected in the arm journey and needs to be sent back to Evidential for analysis.
 Otherwise, the outcome is accessed via a separate ETL/database integration with Evidential.
