@@ -1,0 +1,32 @@
+# GitHub Actions workflow that builds the Lua app on every push to `main`
+# and saves the resulting zip as a downloadable "workflow artifact".
+
+name: Build Lua zip
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evidential
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Build zip via turn-app
+        run: make build
+
+      - name: Rename to unversioned filename
+        run: mv evidential-*.zip evidential.zip
+
+      - name: Upload zip as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidential-zip
+          path: evidential/evidential.zip
+          if-no-files-found: error
