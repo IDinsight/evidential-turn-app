@@ -1,12 +1,11 @@
 # GitHub Actions workflow that builds the Lua app on every push to `main`
-# and commits the resulting `evidential.zip` back to the repo.
+# and publishes the resulting `evidential.zip` to a separate `builds` branch.
 
 name: Build Lua zip
+
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - evidential/evidential.zip
 
 permissions:
   contents: write
@@ -14,29 +13,47 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: evidential
 
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
 
       - name: Build zip via turn-app
+        working-directory: evidential
         run: make build
 
       - name: Rename to unversioned filename
+        working-directory: evidential
         run: mv evidential-*.zip evidential.zip
 
-      - name: Commit and push zip
-        working-directory: .
+      - name: Publish zip to builds branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
+          mkdir -p "$RUNNER_TEMP/publish"
+          cp evidential/evidential.zip "$RUNNER_TEMP/publish/evidential.zip"
+          cd "$RUNNER_TEMP/publish"
+
+          git init -q -b builds
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add evidential/evidential.zip
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+
+          if git ls-remote --exit-code --heads origin builds >/dev/null 2>&1; then
+            git fetch --depth=1 origin builds
+            # `git reset FETCH_HEAD` (default --mixed) moves HEAD to the
+            # remote tip and rebuilds the index to match it, but leaves the
+            # working tree alone — so our just-copied evidential.zip stays
+            # in place. `git add` below then only stages a diff if the new
+            # zip differs from the one already committed.
+            git reset FETCH_HEAD
+          fi
+
+          git add evidential.zip
           if git diff --cached --quiet; then
-            echo "No zip changes to commit — skipping."
+            echo "Zip is byte-identical to the last one on builds — skipping commit."
             exit 0
           fi
-          git commit -m "chore: rebuild evidential.zip [skip ci]"
-          git push
+          git commit -m "Rebuild evidential.zip [skip ci]"
+          git push origin builds

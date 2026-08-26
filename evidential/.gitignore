@@ -1,7 +1,6 @@
 # Built packages
 
 *.zip
-!evidential.zip
 
 # macOS
 .DS_Store
