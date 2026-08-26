@@ -1,11 +1,15 @@
 # GitHub Actions workflow that builds the Lua app on every push to `main`
-# and saves the resulting zip as a downloadable "workflow artifact".
+# and commits the resulting `evidential.zip` back to the repo.
 
 name: Build Lua zip
-
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - evidential/evidential.zip
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -24,9 +28,15 @@ jobs:
       - name: Rename to unversioned filename
         run: mv evidential-*.zip evidential.zip
 
-      - name: Upload zip as workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: evidential-zip
-          path: evidential/evidential.zip
-          if-no-files-found: error
+      - name: Commit and push zip
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evidential/evidential.zip
+          if git diff --cached --quiet; then
+            echo "No zip changes to commit — skipping."
+            exit 0
+          fi
+          git commit -m "chore: rebuild evidential.zip [skip ci]"
+          git push
