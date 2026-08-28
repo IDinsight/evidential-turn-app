@@ -13,47 +13,24 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessary for release notes
 
-      - name: Build zip via turn-app
+      - name: Build and rename
         working-directory: evidential
-        run: make build
-
-      - name: Rename to unversioned filename
-        working-directory: evidential
-        run: mv evidential-*.zip evidential.zip
-
-      - name: Publish zip to builds branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
         run: |
-          mkdir -p "$RUNNER_TEMP/publish"
-          cp evidential/evidential.zip "$RUNNER_TEMP/publish/evidential.zip"
-          cd "$RUNNER_TEMP/publish"
+          make build
+          mv evidential-*.zip evidential.zip
 
-          git init -q -b builds
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+      - name: Create Tag
+        id: tag
+        run: echo "version=v$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_OUTPUT
 
-          if git ls-remote --exit-code --heads origin builds >/dev/null 2>&1; then
-            git fetch --depth=1 origin builds
-            # `git reset FETCH_HEAD` (default --mixed) moves HEAD to the
-            # remote tip and rebuilds the index to match it, but leaves the
-            # working tree alone — so our just-copied evidential.zip stays
-            # in place. `git add` below then only stages a diff if the new
-            # zip differs from the one already committed.
-            git reset FETCH_HEAD
-          fi
-
-          git add evidential.zip
-          if git diff --cached --quiet; then
-            echo "Zip is byte-identical to the last one on builds — skipping commit."
-            exit 0
-          fi
-          git commit -m "Rebuild evidential.zip [skip ci]"
-          git push origin builds
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.version }}
+          generate_release_notes: true
+          files: evidential/evidential.zip
